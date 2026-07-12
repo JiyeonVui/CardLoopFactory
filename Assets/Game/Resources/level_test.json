@@ -1,0 +1,89 @@
+{
+  "TrayModels": [
+    {
+      "Id": 0,
+      "CardColor": 0,
+      "IsLocked": false,
+      "State": 0,
+      "BlockedByTrayIds": [],
+      "Position": { "x": 1.4, "y": 0.4, "z": -4.717 },
+      "Rotation": { "x": 0, "y": 90, "z": 0 },
+      "Composition": [
+        { "Color": 1, "Count": 7 }
+      ]
+    },
+    {
+      "Id": 1,
+      "CardColor": 1,
+      "IsLocked": true,
+      "State": 0,
+      "BlockedByTrayIds": [0],
+      "Position": { "x": 1.4, "y": 0, "z": -3.996 },
+      "Rotation": { "x": 0, "y": 0, "z": 0 },
+      "Composition": [
+        { "Color": 2, "Count": 7 }
+      ]
+    },
+    {
+      "Id": 2,
+      "CardColor": 2,
+      "IsLocked": true,
+      "State": 0,
+      "BlockedByTrayIds": [0],
+      "Position": { "x": 1.4, "y": 0, "z": -5.31 },
+      "Rotation": { "x": 0, "y": 0, "z": 0 },
+      "Composition": [
+        { "Color": 3, "Count": 7 }
+      ]
+    },
+    {
+      "Id": 3,
+      "CardColor": 3,
+      "IsLocked": false,
+      "State": 0,
+      "BlockedByTrayIds": [],
+      "Position": { "x": -1.4, "y": 0.4, "z": -4.717 },
+      "Rotation": { "x": 0, "y": 90, "z": 0 },
+      "Composition": [
+        { "Color": 2, "Count": 7 }
+      ]
+    },
+    {
+      "Id": 4,
+      "CardColor": 4,
+      "IsLocked": true,
+      "State": 0,
+      "BlockedByTrayIds": [3],
+      "Position": { "x": -1.4, "y": 0, "z": -3.996 },
+      "Rotation": { "x": 0, "y": 0, "z": 0 },
+      "Composition": [
+        { "Color": 4, "Count": 7 }
+      ]
+    },
+    {
+      "Id": 5,
+      "CardColor": 0,
+      "IsLocked": true,
+      "State": 0,
+      "BlockedByTrayIds": [3],
+      "Position": {  "x": -1.4, "y": 0, "z": -5.31 },
+      "Rotation": { "x": 0, "y": 0, "z": 0 },
+      "Composition": [
+        { "Color": 0, "Count": 7 }
+      ]
+    }
+  ],
+  "MaxActiveMatchColor": 4,
+  "MatchSlotPositions": [
+    { "x": -2.25, "y": 0, "z": 2 },
+    { "x": -0.75, "y": 0, "z": 2 },
+    { "x": 0.75, "y": 0, "z": 2 },
+    { "x": 2.25, "y": 0, "z": 2 }
+  ],
+  "MatchSlotRotations": [
+    { "x": 0, "y": 90, "z": 0 },
+    { "x": 0, "y": 90, "z": 0 },
+    { "x": 0, "y": 90, "z": 0 },
+    { "x": 0, "y": 90, "z": 0 }
+  ]
+}

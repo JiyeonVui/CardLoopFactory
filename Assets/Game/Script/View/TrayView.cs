@@ -1,0 +1,312 @@
+using System;
+using System.Collections.Generic;
+using DG.Tweening;
+using Engine.Manager;
+using Extension;
+using Script.Engine.Manager.Pooling;
+using UnityEngine;
+using UnityEngine.EventSystems;
+
+public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscriber, IPoolReturnable
+{
+    // Fired when the user taps/clicks this tray on screen. Passes itself so a
+    // single listener can tell which tray was tapped.
+
+    [SerializeField] private List<MeshRenderer> _renderers = new List<MeshRenderer>();
+    [SerializeField] private List<Material> _materials = new List<Material>();
+    [SerializeField] private Transform _cardHolder;
+    [SerializeField] private Transform _wingLeft;
+    [SerializeField] private Transform _wingRight;
+    [SerializeField] private GameObject cardPrefab;
+    
+    private List<Vector3> _cardSlotPositions = new List<Vector3>()
+    {
+        new Vector3 (-0.6f, 0, 0),
+        new Vector3 (-0.4f, 0, 0),
+        new Vector3 (-0.2f, 0, 0),
+        new Vector3 (0, 0, 0),
+        new Vector3 (0.2f, 0, 0),
+        new Vector3 (0.4f, 0, 0),
+        new Vector3 (0.6f, 0, 0),
+    };
+    private List<CardView> _cardViews = new List<CardView>();
+    private TrayModel _trayModel;
+    private MatchColorModel _matchColorModel;
+    private bool _isOpen = false;
+    private int _numOfCardsDoneAnim;
+
+    // Thời gian tray bay vào vị trí slot match trên sân. Đi theo style hằng số
+    // duration của GameController/CardView.
+    private const float MoveToSlotDuration = 0.3f;
+
+    // Anim release khi slot đủ card: bay lên độ cao Y rồi bay ngang ra khỏi màn hình
+    // theo trục X trước khi despawn về pool.
+    private const float ReleaseUpHeight = 2f;
+    private const float ReleaseAwayX = -100f;
+    private const float ReleaseUpDuration = 0.3f;
+    private const float ReleaseAwayDuration = 0.5f;
+    private IGameController _gameController;
+    private IGameEntityFactory _factory;
+    private IPoolingService _poolingService;
+    [Inject] private IMatchColorController _matchColorController;
+    [Inject] private ITrayController _trayController;
+
+    public int TrayId => _trayModel.Id;
+    public Transform CardHolder => _cardHolder;
+    private void Update()
+    {
+        if (_isOpen)
+        {
+            return;
+        }
+        
+        if (_trayModel == null)
+        {
+            return;
+        }
+
+        if (!_trayModel.IsLocked)
+        {
+            OnOpen();
+        }
+    }
+
+    public void ReadyToStartGame(GameContextData gameContextData)
+    {
+        _gameController = gameContextData.gameController;
+        _factory = gameContextData.gameEntityFactory;
+        ServiceLocator.Instance.ResolveInjection(this);
+        ResetState();
+    }
+
+    // Pool inject IPoolingService qua đây (lần spawn đầu). Giữ để tray tự trả về đúng
+    // typed pool bằng ReturnObjectToPool<TrayView> (xem PlayReleaseAnim).
+    public void SetPoolingService(IPoolingService poolingService)
+    {
+        _poolingService = poolingService;
+    }
+
+    // Reset field runtime mỗi lần spawn. Đặt ở ReadyToStartGame (chạy qua
+    // InitializeGameObject ở cả spawn mới lẫn reuse) thay vì SetPoolingService — hook
+    // đó bị skip khi reuse do generic return cache InactiveType. Init() set lại
+    // _trayModel + card ngay sau.
+    private void ResetState()
+    {
+        transform.DOKill();
+        _numOfCardsDoneAnim = 0;
+        _isOpen = false;
+        _matchColorModel = null;
+        _cardViews.Clear();
+    }
+
+    public void Init(TrayModel trayModel)
+    {
+        _trayModel = trayModel;
+        SetTrayMaterial(trayModel);
+        CreateCards(trayModel);
+        ApplyLockState(trayModel.IsLocked);
+    }
+
+    public void CardFlyDone()
+    {
+        _numOfCardsDoneAnim++;
+        if (_numOfCardsDoneAnim == _matchColorModel.NumberOfSlotsCards)
+        {
+            PlayReleaseAnim();
+        }
+    }
+
+    // Slot đã đủ card: bay lên độ cao Y rồi bay ngang theo trục X ra khỏi màn hình.
+    // Kết thúc tween mới gỡ slot khỏi controller/list và despawn tray về pool.
+    private void PlayReleaseAnim()
+    {
+        Sequence sequence = DOTween.Sequence();
+        sequence.Append(transform.DOLocalMoveY(ReleaseUpHeight, ReleaseUpDuration).SetEase(Ease.OutQuad));
+        sequence.Append(transform.DOLocalMoveX(ReleaseAwayX, ReleaseAwayDuration).SetEase(Ease.InQuad));
+        sequence.OnComplete(() =>
+        {
+            _matchColorController.RemoveMatchColor(_trayModel.Id);
+            _gameController.RemoveTrayMatchColor(this);
+            ReturnCardsToPool();
+            _poolingService.ReturnObjectToPool<TrayView>(this, gameObject);
+        });
+    }
+
+    // Trả card đã match về pool trước khi despawn tray. Các card này được reparent
+    // về _cardHolder (xem CardView.MoveIntoMatchSlot) nên không còn trong _cardViews.
+    // Gom trước rồi mới trả để không sửa collection con trong lúc đang duyệt.
+    private void ReturnCardsToPool()
+    {
+        // Card đã match được reparent về _cardHolder. Gom trước rồi mới trả để không
+        // sửa collection con trong lúc duyệt. CardView.ReturnToPool tự detach khỏi
+        // _cardHolder và trả về đúng typed pool bằng generic ReturnObjectToPool.
+        List<CardView> cards = new List<CardView>();
+        foreach (Transform child in _cardHolder)
+        {
+            if (child.TryGetComponent(out CardView card))
+            {
+                cards.Add(card);
+            }
+        }
+
+        foreach (CardView card in cards)
+        {
+            card.ReturnToPool();
+        }
+    }
+    
+    // Step 1: tint the tray renderers with the tray's color.
+    private void SetTrayMaterial(TrayModel trayModel)
+    {
+        Material material = GetMaterial(trayModel.CardColor);
+        if (material == null)
+        {
+            return;
+        }
+
+        foreach (MeshRenderer meshRenderer in _renderers)
+        {
+            meshRenderer.sharedMaterial = material;
+        }
+    }
+
+    // Step 2: spawn one card per unit in the composition, placed on its slot.
+    private void CreateCards(TrayModel trayModel)
+    {
+        if (cardPrefab == null)
+        {
+            Debug.LogError("[TrayView] cardPrefab is not assigned.");
+            return;
+        }
+
+        if (_factory == null)
+        {
+            Debug.LogError("[TrayView] GameEntityFactory is not ready; call ReadyToStartGame first.");
+            return;
+        }
+
+        if (trayModel.Composition == null)
+        {
+            return;
+        }
+
+        int slotIndex = 0;
+        foreach (CardGroup group in trayModel.Composition)
+        {
+            for (int i = 0; i < group.Count; i++)
+            {
+                if (slotIndex >= _cardSlotPositions.Count)
+                {
+                    Debug.LogWarning("[TrayView] More cards than slots; extra cards ignored.");
+                    return;
+                }
+
+                // Reuse cards from the pool instead of Instantiate; followParent keeps
+                // the card under _cardHolder so the slot offset stays local to the tray.
+                CardView cardView = _factory.Spawn<CardView>(cardPrefab, _cardHolder, true);
+                cardView.transform.localPosition = _cardSlotPositions[slotIndex];
+                cardView.Init(group.Color);
+
+                _cardViews.Add(cardView);
+                slotIndex++;
+            }
+        }
+    }
+
+    // Step 3: a locked tray shows its wings (closed); an unlocked tray shows cards.
+    private void ApplyLockState(bool isLocked)
+    {
+        _wingLeft.gameObject.SetActive(isLocked);
+        _wingRight.gameObject.SetActive(isLocked);
+        _cardHolder.gameObject.SetActive(!isLocked);
+    }
+
+    private Material GetMaterial(CardColor color)
+    {
+        int index = (int)color;
+        if (_materials == null || index < 0 || index >= _materials.Count)
+        {
+            Debug.LogError($"[TrayView] No material assigned for color '{color}'.");
+            return null;
+        }
+
+        return _materials[index];
+    }
+
+    public Vector3 GetCardPosition(int indexOfCard)
+    {
+        return _cardSlotPositions[indexOfCard];
+    }
+    
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        Debug.LogError("[TrayView] OnPointerClick() called with no parameters.");
+        if (_trayModel.IsLocked)
+        {
+            return;
+        }
+        
+        
+        if (_cardViews.Count > 0)
+        {
+            DistributionCard();
+        }
+        else
+        {
+            MoveToSlot();
+        }
+        
+    }
+
+    private void OnOpen()
+    {
+        _isOpen = true;
+        _wingLeft.gameObject.SetActive(false);
+        _wingRight.gameObject.SetActive(false);
+        _cardHolder.gameObject.SetActive(true);
+    }
+
+    private void DistributionCard()
+    {
+        _gameController.DistributionCard(_cardViews, _trayModel);
+        _cardViews.Clear();
+    }
+
+    // Tray đã phát hết card: biến chính nó thành 1 slot match-color trên sân bằng
+    // cách tạo MatchColorModel rồi bay tới vị trí slot đó.
+    private void MoveToSlot()
+    {
+        // Không còn slot trống thì bỏ qua (CreateMatchColor cũng sẽ trả null).
+        if (_matchColorController.IsMatchColorFull())
+        {
+            Debug.LogWarning("[TrayView] Đã đạt giới hạn slot match-color; bỏ qua MoveToSlot.");
+            return;
+        }
+
+        _matchColorModel = _matchColorController.CreateMatchColor(_trayModel);
+        if (_matchColorModel == null)
+        {
+            return;
+        }
+
+        // Đăng ký làm slot match-color để card khớp tra ra TrayView này theo TrayId
+        // (CardView.MoveIntoMatchSlot → GameController.GetTrayView). Đăng ký ngay để
+        // card match được trong lúc tray còn đang bay vào slot.
+        _gameController.AddTrayMatchColor(this);
+
+        // SlotPosition/SlotRotation là toạ độ LOCAL so với TrayHolderCard (giá trị
+        // đúng như hiển thị trong Inspector, VD rotation 0/90/0). Reparent giữ world
+        // pose để không teleport lúc bắt đầu tween; anim tween thẳng tới local đích.
+        Vector3 targetLocalPos = _matchColorModel.SlotPosition;
+        Vector3 targetLocalRotation = _matchColorModel.SlotRotation;
+
+        transform.SetParent(_gameController.TrayHolderCard, worldPositionStays: true);
+
+        Sequence sequence = DOTween.Sequence();
+        sequence.Append(transform.DOLocalMove(targetLocalPos, MoveToSlotDuration).SetEase(Ease.OutQuad));
+        sequence.Join(transform.DOLocalRotate(targetLocalRotation, MoveToSlotDuration));
+        // Kết thúc anim: tray coi như đã tiêu thụ → mở khoá các tray bị nó chặn.
+        // View của các tray đó tự phản ứng qua Update (poll IsLocked).
+        sequence.OnComplete(() => _trayController.UnlockTraysBlockedBy(_trayModel.Id));
+    }
+}

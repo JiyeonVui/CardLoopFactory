@@ -1,0 +1,41 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+[Serializable]
+public class LevelManager
+{
+    public List<TrayModel> TrayModels;
+
+    // Vị trí vật lý các slot match-color trên sân (đọc từ level JSON).
+    public List<Vector3> MatchSlotPositions;
+
+    // Góc xoay (euler độ) các slot match-color, song song theo index với
+    // MatchSlotPositions. Dùng để play anim card khi xếp vào slot.
+    public List<Vector3> MatchSlotRotations;
+
+    // Số slot match-color được phép active cùng lúc (có thể nhỏ hơn số vị trí ở trên).
+    public int MaxActiveMatchColor;
+
+    // Loads a level JSON placed under any Resources folder (path without extension),
+    // e.g. LoadFromResources("level_test") for Assets/Game/Resources/level_test.json.
+    public static LevelManager LoadFromResources(string resourcePath)
+    {
+        TextAsset jsonAsset = Resources.Load<TextAsset>(resourcePath);
+        if (jsonAsset == null)
+        {
+            Debug.LogError($"[LevelManager] Level file not found at Resources/{resourcePath}.");
+            return null;
+        }
+
+        LevelManager level = JsonUtility.FromJson<LevelManager>(jsonAsset.text);
+
+        // JSON has no TotalCardCount, so seed it from each tray's composition.
+        foreach (TrayModel tray in level.TrayModels)
+        {
+            tray.RecalculateTotalCardCount();
+        }
+
+        return level;
+    }
+}
