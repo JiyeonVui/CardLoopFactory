@@ -4,20 +4,27 @@ using UnityEngine;
 [Service(nameof(IBeltController))]
 public interface IBeltController
 {
+    void Init(List<Vector3> waypoints, float cornerRadius, float velocity);
     ConveyorCard AddNewCard(CardColor color);
     void UpdateCardPosition(float deltaTime);
 
+    // Pose điểm đầu/cuối quỹ đạo belt, để đặt marker startBelt/endBelt cho đúng.
+    Vector3 StartPosition { get; }
+    Vector3 EndPosition { get; }
+    Vector3 StartDirection { get; }
+    Vector3 EndDirection { get; }
 }
 
 public class BeltController : IBeltController
 {
     private Queue<ConveyorCard> cardInQueue = new Queue<ConveyorCard>();
     private List<ConveyorCard> cardOnBelt = new List<ConveyorCard>();
-    
-    private Vector3 _startBelt;
-    private Vector3 _endBelt;
 
-    private float _velocity;
+    // Quỹ đạo belt (chữ U bo tròn), bake từ waypoint của level. Card di chuyển theo
+    // arc-length dọc path này thay vì cộng thẳng trục X.
+    private BeltPath _path;
+
+    private float _velocity = 2.0f;
 
     private int _currentModelId;
 
@@ -27,27 +34,38 @@ public class BeltController : IBeltController
 
     // A card is considered to still occupy the start slot until it has moved
     // slightly past it, so we don't spawn a new card on top of a just-spawned one.
+    // Đơn vị là arc-length dọc path.
     private const float StartSlotTolerance = 0.3f;
 
-    public BeltController()
+    // Số đoạn nội suy cho mỗi góc bo — càng lớn càng mượt.
+    private const int CornerSegments = 8;
+
+    // Gọi lúc load level (GameContext.LoadLevel) để dựng quỹ đạo belt từ waypoint JSON.
+    public void Init(List<Vector3> waypoints, float cornerRadius, float velocity)
     {
-        InitForTest();
+        _path = new BeltPath(waypoints, cornerRadius, CornerSegments);
+        _velocity = velocity;
+
+        if (!_path.IsValid)
+        {
+            Debug.LogError("[BeltController] Belt path không hợp lệ; cần >= 2 waypoint trong level.");
+        }
     }
-    
-    private void InitForTest()
-    {
-        _startBelt = new Vector3(-4,0,0);
-        _endBelt = new Vector3(4,0,0);
-        _velocity = 2.0f;
-    }
-    
+
+    public Vector3 StartPosition => _path != null ? _path.GetPositionAtDistance(0f) : Vector3.zero;
+    public Vector3 StartDirection => _path != null ? _path.GetDirectionAtDistance(0f) : Vector3.right;
+    public Vector3 EndPosition => _path != null ? _path.GetPositionAtDistance(_path.TotalLength) : Vector3.zero;
+    public Vector3 EndDirection => _path != null ? _path.GetDirectionAtDistance(_path.TotalLength) : Vector3.right;
+
 
     public ConveyorCard AddNewCard(CardModel cardModel)
     {
         ConveyorCard newCard = new ConveyorCard
         {
             card = cardModel,
-            position = _startBelt
+            position = StartPosition,
+            direction = StartDirection,
+            distance = 0f
         };
 
         cardInQueue.Enqueue(newCard);
@@ -60,7 +78,9 @@ public class BeltController : IBeltController
         ConveyorCard conveyorCard = new ConveyorCard()
         {
             card = cardModel,
-            position = _startBelt
+            position = StartPosition,
+            direction = StartDirection,
+            distance = 0f
         };
         cardInQueue.Enqueue(conveyorCard);
         _currentModelId++;
@@ -69,7 +89,12 @@ public class BeltController : IBeltController
 
     public void UpdateCardPosition(float deltaTime)
     {
-        // Logic 1: move every card already on the belt from left (start) to right (end).
+        if (_path == null || !_path.IsValid)
+        {
+            return;
+        }
+
+        // Logic 1: move every card already on the belt along the U-shaped path.
         if (cardOnBelt.Count > 0)
         {
             MoveCardsAlongBelt(deltaTime);
@@ -113,17 +138,17 @@ public class BeltController : IBeltController
             {
                 continue;
             }
-            
-            Vector3 next = card.position;
-            next.x += step;
 
-            // The belt is a horizontal loop: once past the end, wrap back to the start.
-            if (next.x > _endBelt.x)
+            // Tiến theo arc-length dọc path; belt là vòng lặp nên wrap về đầu khi vượt
+            // tổng độ dài (card "nhảy" từ cuối ∪ về đầu, giống hành vi teleport cũ).
+            card.distance += step;
+            if (_path.TotalLength > 0f)
             {
-                next = _startBelt;
+                card.distance %= _path.TotalLength;
             }
 
-            card.position = next;
+            card.position = _path.GetPositionAtDistance(card.distance);
+            card.direction = _path.GetDirectionAtDistance(card.distance);
         }
     }
 
@@ -140,7 +165,9 @@ public class BeltController : IBeltController
         }
 
         ConveyorCard nextCard = cardInQueue.Dequeue();
-        nextCard.position = _startBelt;
+        nextCard.distance = 0f;
+        nextCard.position = StartPosition;
+        nextCard.direction = StartDirection;
         cardOnBelt.Add(nextCard);
     }
 
@@ -148,7 +175,9 @@ public class BeltController : IBeltController
     {
         foreach (ConveyorCard card in cardOnBelt)
         {
-            if (Vector3.Distance(card.position, _startBelt) <= StartSlotTolerance)
+            // So theo arc-length: card vừa lên belt (distance ~ 0) coi như đang chiếm
+            // slot đầu, tránh spawn chồng lên nhau.
+            if (card.distance <= StartSlotTolerance)
             {
                 return true;
             }

@@ -46,6 +46,14 @@ public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable
         }
 
         transform.position = _conveyorCard.position;
+
+        // Xoay card theo hướng đi trên belt để quay đầu mượt khi vào cua. Quy ước
+        // mặt +X của card hướng theo chiều di chuyển (khớp GetBeltHeadingRotation=0
+        // lúc belt đi thẳng +X), nên map +X → direction.
+        if (_conveyorCard.direction != Vector3.zero)
+        {
+            transform.rotation = Quaternion.FromToRotation(Vector3.right, _conveyorCard.direction);
+        }
     }
 
     private void MoveIntoMatchSlot()

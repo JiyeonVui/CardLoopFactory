@@ -39,6 +39,7 @@ public class GameContext : MonoBehaviour
 
         }
         catch (Exception e) {
+
             Debug.LogError(e);
         }
     }
@@ -66,6 +67,13 @@ public class GameContext : MonoBehaviour
         // Cấp danh sách TrayModel cho TrayController để xử lý mở khoá theo dependency.
         ITrayController trayController = ServiceLocator.Instance.Resolve<ITrayController>();
         trayController.Init(level);
+
+        // Dựng quỹ đạo belt (chữ U) từ waypoint của level.
+        IBeltController beltController = ServiceLocator.Instance.Resolve<IBeltController>();
+        beltController.Init(level.BeltPathPoints, level.BeltCornerRadius, level.BeltVelocity);
+
+        // Đặt marker startBelt/endBelt vào đúng điểm đầu/cuối path sau khi path đã dựng.
+        _contextData.gameController.PlaceBeltMarkers(beltController);
 
         foreach (TrayModel trayModel in level.TrayModels)
         {

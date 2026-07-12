@@ -16,7 +16,9 @@ public interface IGameController
     void RemoveTrayMatchColor(TrayView trayView);
 
     TrayView GetTrayView(int trayId);
-    
+
+    void PlaceBeltMarkers(IBeltController beltController);
+
     void StopGame(bool isGameStop);
 }
 public class GameController : MonoBehaviour, IGameController
@@ -25,6 +27,7 @@ public class GameController : MonoBehaviour, IGameController
     [SerializeField] private GameObject _cardPrefab;
     
     [SerializeField] private GameObject startBelt;
+    [SerializeField] private GameObject endBelt;
     [SerializeField] private Transform beltHolderCard;
     [SerializeField] private Transform trayHolderCard;
     public Transform TrayHolderCard => trayHolderCard;
@@ -110,6 +113,25 @@ public class GameController : MonoBehaviour, IGameController
         return trayView;
     }
 
+    // Đặt marker startBelt/endBelt vào đúng điểm đầu/cuối quỹ đạo belt và xoay theo
+    // hướng đi tại đó (+X card → hướng path). Gọi sau khi belt.Init (GameContext).
+    // Nhận belt qua tham số (không dùng _beltController inject) vì hàm được gọi từ
+    // GameContext.LoadLevel trước khi GameController.Start resolve injection.
+    public void PlaceBeltMarkers(IBeltController beltController)
+    {
+        if (startBelt != null)
+        {
+            startBelt.transform.position = beltController.StartPosition;
+            startBelt.transform.rotation = Quaternion.FromToRotation(Vector3.right, beltController.StartDirection);
+        }
+
+        if (endBelt != null)
+        {
+            endBelt.transform.position = beltController.EndPosition;
+            endBelt.transform.rotation = Quaternion.FromToRotation(Vector3.right, beltController.EndDirection);
+        }
+    }
+
     public void StopGame(bool isGameStop)
     {
         _isGameStop = isGameStop;
@@ -129,11 +151,10 @@ public class GameController : MonoBehaviour, IGameController
         sequence.Append(cardTransform
             .DOJump(startBelt.transform.position, JumpPower, JumpCount, FlyDuration)
             .SetEase(Ease.OutQuad));
-        // Face the card along the belt's travel direction as it lands. The belt is
-        // currently a straight left->right line, whose heading (+X) maps to a local
-        // rotation of 0 relative to beltHolderCard. See GetBeltHeadingRotation() for
-        // how this generalises to curved belts.
-        sequence.Join(cardTransform.DOLocalRotate(GetBeltHeadingRotation(), FlyDuration));
+        // Xoay card đúng hướng world của điểm đầu path lúc đáp — trùng rotation mà
+        // CardView.Update sẽ set (FromToRotation(+X, StartDirection)) nên không giật.
+        // Dùng DORotate (world) vì heading là hướng world, không phải local nữa.
+        sequence.Join(cardTransform.DORotate(GetBeltHeadingRotation(), FlyDuration));
         sequence.OnComplete(() =>
         {
             var converyCard = _beltController.AddNewCard(cardView.CardColor);
@@ -142,12 +163,11 @@ public class GameController : MonoBehaviour, IGameController
         });
     }
 
-    // The local euler angles a card should have so its +X face points along the belt's
-    // direction of travel. Today the belt runs straight left->right (heading = +X), so
-    // aligned with beltHolderCard means zero rotation. When belts gain curved paths this
-    // becomes a lookup of the path tangent at the card's position (see notes below).
+    // Góc euler WORLD card cần có khi đáp lên đầu belt: mặt +X của card hướng theo
+    // StartDirection (tangent tại điểm đầu quỹ đạo). Khớp đúng với rotation mà
+    // CardView.Update áp cho card khi bám belt, nên chuyển tiếp liền mạch.
     private Vector3 GetBeltHeadingRotation()
     {
-        return Vector3.zero;
+        return Quaternion.FromToRotation(Vector3.right, _beltController.StartDirection).eulerAngles;
     }
 }

@@ -17,6 +17,13 @@ public class LevelManager
     // Số slot match-color được phép active cùng lúc (có thể nhỏ hơn số vị trí ở trên).
     public int MaxActiveMatchColor;
 
+    // Waypoint quỹ đạo belt (chữ U): các đỉnh gấp khúc, BeltPath sẽ bo tròn góc.
+    public List<Vector3> BeltPathPoints;
+
+    // Bán kính bo góc tại các đỉnh belt và tốc độ card chạy trên belt.
+    public float BeltCornerRadius;
+    public float BeltVelocity;
+
     // Loads a level JSON placed under any Resources folder (path without extension),
     // e.g. LoadFromResources("level_test") for Assets/Game/Resources/level_test.json.
     public static LevelManager LoadFromResources(string resourcePath)

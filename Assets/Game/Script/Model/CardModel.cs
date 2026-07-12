@@ -17,6 +17,14 @@ public class ConveyorCard
     public CardModel card;
     public Vector3 position;
 
+    // Quãng đường (arc-length) đã đi dọc quỹ đạo belt. BeltController dùng để tính
+    // position theo path chữ U thay vì cộng thẳng trục X; wrap khi vượt tổng độ dài.
+    public float distance;
+
+    // Hướng đi (tangent) của card trên belt tại vị trí hiện tại; CardView xoay card
+    // theo hướng này để quay đầu mượt khi vào cua. Mặc định +X.
+    public Vector3 direction = Vector3.right;
+
     // Trạng thái match do MatchColorController đánh dấu; CardView quan sát các
     // trường này để tự dừng bám belt và xếp card vào slot (không cần controller
     // giữ tham chiếu tới View).
