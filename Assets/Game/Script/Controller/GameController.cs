@@ -9,7 +9,7 @@ public interface IGameController
 {
     Transform TrayHolderCard { get; }
     
-    void DistributionCard(List<CardView> cards, TrayModel trayModel);
+    void DistributionCard(List<CardView> cards, TrayModel trayModel, CardColor cardColor);
 
     void AddTrayMatchColor(TrayView trayView);
 
@@ -69,7 +69,7 @@ public class GameController : MonoBehaviour, IGameController
     }
     
 
-    public void DistributionCard(List<CardView> cards, TrayModel trayModel)
+    public void DistributionCard(List<CardView> cards, TrayModel trayModel, CardColor cardColor)
     {
         if (startBelt == null)
         {
@@ -77,9 +77,16 @@ public class GameController : MonoBehaviour, IGameController
             return;
         }
 
-        for (int i = 0; i < cards.Count; i++)
+        var counter = 0;
+        for (var i = 0; i < cards.Count; i++)
         {
-            FlyCardToBelt(cards[i], i * StaggerDelay, trayModel);
+            if (cards[i].CardColor == cardColor)
+            {
+                
+                FlyCardToBelt(cards[i], counter * StaggerDelay, trayModel);
+                counter++;
+            }
+               
         }
     }
 
@@ -140,6 +147,10 @@ public class GameController : MonoBehaviour, IGameController
     private void FlyCardToBelt(CardView cardView, float delay, TrayModel trayModel)
     {
         Transform cardTransform = cardView.transform;
+
+        // Card đã rời tray gốc để bay lên belt: gỡ liên kết tray gốc ngay để click sau
+        // đó (nếu còn nhận được) không phát lại nhóm màu.
+        cardView.ClearOwnerTray();
 
         // The card was parented under the tray while it lived there. Hand it over to
         // the belt holder so its pose is now owned by the belt, keeping its current

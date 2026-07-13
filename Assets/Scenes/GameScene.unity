@@ -811,6 +811,7 @@ MonoBehaviour:
   _btnAddCard: {fileID: 811658362}
   _cardPrefab: {fileID: 2166329829168969408, guid: db0073788e46f4df3a8c975f7fe06d19, type: 3}
   startBelt: {fileID: 1099601679}
+  endBelt: {fileID: 1365753007}
   beltHolderCard: {fileID: 1658944630}
   trayHolderCard: {fileID: 767244711}
 --- !u!4 &1228461335

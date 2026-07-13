@@ -1,8 +1,9 @@
 using DG.Tweening;
 using Script.Engine.Manager.Pooling;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
-public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable
+public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable, IPointerClickHandler
 {
     [SerializeField] private MeshRenderer _meshRenderer;
 
@@ -20,7 +21,16 @@ public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable
         get => _color;
     }
 
+    // Tray đích (match-slot) mà card bay vào khi khớp màu — set ở MoveIntoMatchSlot.
     private TrayView _trayView;
+
+    // Tray gốc đang chứa card (set lúc TrayView.CreateCards). Click vào card sẽ nhờ
+    // tray gốc này phát distribution cho đúng nhóm màu của card.
+    private TrayView _ownerTray;
+
+    // Cờ chống race: các card cạnh nhau nên 1 lần chạm có thể tới nhiều card; card
+    // đã bắn tín hiệu distribution rồi thì không bắn lại.
+    private bool _isDistributed = false;
     
     // Thời gian bay từ belt vào đúng ô trong slot match. Đi theo style hằng số
     // duration của GameController.FlyCardToBelt.
@@ -105,6 +115,8 @@ public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable
         _isMatch = false;
         _conveyorCard = null;
         _trayView = null;
+        _ownerTray = null;
+        _isDistributed = false;
     }
 
     // Trả card về typed pool (phải dùng generic ReturnObjectToPool<CardView>; bản
@@ -116,12 +128,34 @@ public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable
         _poolingService.ReturnObjectToPool<CardView>(this, gameObject);
     }
 
-    public void Init(CardColor color)
+    public void Init(CardColor color, TrayView ownerTray)
     {
         _color = color;
+        _ownerTray = ownerTray;
         SetCardColor(color);
     }
-    
+
+    // Click vào card: nhờ tray gốc phát distribution cho đúng nhóm màu của card.
+    // Chỉ bắn 1 lần (chống race khi các card sát nhau) và bỏ qua nếu card đã rời tray.
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (_isDistributed || _ownerTray == null)
+        {
+            return;
+        }
+
+        _isDistributed = true;
+        _ownerTray.DistributionCard(_color);
+    }
+
+    // Card đã rời tray gốc để bay lên belt: gỡ liên kết tray gốc (và đánh dấu đã
+    // phát) để mọi click sau đó không phát lại nhóm màu. Gọi khi card bắt đầu bay.
+    public void ClearOwnerTray()
+    {
+        _ownerTray = null;
+        _isDistributed = true;
+    }
+
     public void AddCoyorCard(ConveyorCard conveyorCard)
     {
         _conveyorCard = conveyorCard;

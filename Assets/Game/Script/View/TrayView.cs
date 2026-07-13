@@ -205,7 +205,7 @@ public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscri
                 // the card under _cardHolder so the slot offset stays local to the tray.
                 CardView cardView = _factory.Spawn<CardView>(cardPrefab, _cardHolder, true);
                 cardView.transform.localPosition = _cardSlotPositions[slotIndex];
-                cardView.Init(group.Color);
+                cardView.Init(group.Color, this);
 
                 _cardViews.Add(cardView);
                 slotIndex++;
@@ -238,24 +238,19 @@ public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscri
         return _cardSlotPositions[indexOfCard];
     }
     
+    // Click vào tray giờ chỉ dùng để "phát tray" khi đã hết card. Việc phát card
+    // đã chuyển sang cho từng CardView (CardView.OnPointerClick → DistributionCard).
     public void OnPointerClick(PointerEventData eventData)
     {
-        Debug.LogError("[TrayView] OnPointerClick() called with no parameters.");
         if (_trayModel.IsLocked)
         {
             return;
         }
-        
-        
-        if (_cardViews.Count > 0)
-        {
-            DistributionCard();
-        }
-        else
+
+        if (_cardViews.Count == 0)
         {
             MoveToSlot();
         }
-        
     }
 
     private void OnOpen()
@@ -266,10 +261,12 @@ public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscri
         _cardHolder.gameObject.SetActive(true);
     }
 
-    private void DistributionCard()
+    public void DistributionCard(CardColor cardColor)
     {
-        _gameController.DistributionCard(_cardViews, _trayModel);
-        _cardViews.Clear();
+        _gameController.DistributionCard(_cardViews, _trayModel, cardColor);
+
+        // Chỉ gỡ card đúng màu vừa phát; tray vẫn giữ các nhóm màu còn lại.
+        _cardViews.RemoveAll(card => card.CardColor == cardColor);
     }
 
     // Tray đã phát hết card: biến chính nó thành 1 slot match-color trên sân bằng
