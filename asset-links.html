@@ -1,0 +1,397 @@
+<title>Nguồn asset miễn phí — CardLoopFactory</title>
+<style>
+  :root {
+    --bg: #eef1f4;
+    --surface: #ffffff;
+    --surface-2: #f5f7f9;
+    --border: #d8dee4;
+    --ink: #1c232b;
+    --ink-soft: #56626e;
+    --ink-faint: #838d99;
+    --accent: #c8730f;
+    --accent-ink: #ffffff;
+    --accent-soft: #f6e3cf;
+    --good: #2f7d55;
+    --good-soft: #d9ede1;
+    --warn: #9a6410;
+    --warn-soft: #f3e6cc;
+    --neutral: #5b6570;
+    --neutral-soft: #e4e8ec;
+    --shadow: 0 1px 2px rgba(20,30,40,.06), 0 8px 24px rgba(20,30,40,.05);
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12161b;
+      --surface: #1a2027;
+      --surface-2: #20272f;
+      --border: #2c353f;
+      --ink: #e7ecf1;
+      --ink-soft: #a3aeba;
+      --ink-faint: #737f8b;
+      --accent: #e59440;
+      --accent-ink: #1a1206;
+      --accent-soft: #3a2a13;
+      --good: #6fce9c;
+      --good-soft: #1d3327;
+      --warn: #e0af5c;
+      --warn-soft: #382c14;
+      --neutral: #9aa5b1;
+      --neutral-soft: #2a323b;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #eef1f4; --surface: #ffffff; --surface-2: #f5f7f9; --border: #d8dee4;
+    --ink: #1c232b; --ink-soft: #56626e; --ink-faint: #838d99;
+    --accent: #c8730f; --accent-ink: #ffffff; --accent-soft: #f6e3cf;
+    --good: #2f7d55; --good-soft: #d9ede1; --warn: #9a6410; --warn-soft: #f3e6cc;
+    --neutral: #5b6570; --neutral-soft: #e4e8ec;
+    --shadow: 0 1px 2px rgba(20,30,40,.06), 0 8px 24px rgba(20,30,40,.05);
+  }
+  :root[data-theme="dark"] {
+    --bg: #12161b; --surface: #1a2027; --surface-2: #20272f; --border: #2c353f;
+    --ink: #e7ecf1; --ink-soft: #a3aeba; --ink-faint: #737f8b;
+    --accent: #e59440; --accent-ink: #1a1206; --accent-soft: #3a2a13;
+    --good: #6fce9c; --good-soft: #1d3327; --warn: #e0af5c; --warn-soft: #382c14;
+    --neutral: #9aa5b1; --neutral-soft: #2a323b;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: clamp(20px, 5vw, 56px) clamp(16px, 4vw, 32px) 64px;
+  }
+
+  header { margin-bottom: 28px; }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+  h1 {
+    font-size: clamp(24px, 4.5vw, 34px);
+    line-height: 1.12;
+    margin: 0 0 10px;
+    letter-spacing: -.01em;
+    text-wrap: balance;
+  }
+  .lede {
+    margin: 0;
+    color: var(--ink-soft);
+    max-width: 60ch;
+    font-size: 15px;
+  }
+
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    margin: 22px 0 6px;
+    background: linear-gradient(var(--bg) 70%, transparent);
+  }
+  .copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    font: inherit;
+    font-weight: 650;
+    font-size: 15px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform .12s ease, filter .12s ease;
+  }
+  .copy-btn:hover { filter: brightness(1.05); }
+  .copy-btn:active { transform: translateY(1px); }
+  .copy-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .copy-btn.done { background: var(--good); color: #fff; }
+  .copy-btn svg { width: 18px; height: 18px; flex: none; }
+  .count {
+    color: var(--ink-faint);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cat { margin-top: 30px; }
+  .cat-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cat-head h2 {
+    font-size: 16px;
+    margin: 0;
+    letter-spacing: -.01em;
+  }
+  .cat-head .n {
+    font-size: 12px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+    margin-left: auto;
+  }
+
+  ul.links { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  a.link {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 6px 14px;
+    text-decoration: none;
+    color: inherit;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 13px 16px;
+    box-shadow: var(--shadow);
+    transition: border-color .14s ease, transform .14s ease;
+  }
+  a.link:hover { border-color: var(--accent); transform: translateY(-1px); }
+  a.link:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .link .name { font-weight: 620; font-size: 15px; }
+  .link .url {
+    grid-column: 1 / 2;
+    color: var(--ink-faint);
+    font-size: 12.5px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    word-break: break-all;
+  }
+  .lic {
+    grid-row: 1 / 3;
+    grid-column: 2 / 3;
+    align-self: center;
+    justify-self: end;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    padding: 4px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .lic.cc0 { background: var(--good-soft); color: var(--good); }
+  .lic.by  { background: var(--warn-soft); color: var(--warn); }
+  .lic.var { background: var(--neutral-soft); color: var(--neutral); }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin-top: 34px;
+    padding: 16px 18px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .legend b { color: var(--ink); }
+  .legend .row { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 999px; flex: none; }
+  .dot.cc0 { background: var(--good); }
+  .dot.by { background: var(--warn); }
+  .dot.var { background: var(--neutral); }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translate(-50%, 14px);
+    background: var(--ink);
+    color: var(--bg);
+    padding: 11px 20px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+    box-shadow: var(--shadow);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">CardLoopFactory · Tài nguyên</p>
+    <h1>Nguồn asset miễn phí để dựng bối cảnh &amp; làm game đẹp hơn</h1>
+    <p class="lede">Tuyển chọn cho game casual/low-poly kiểu băng chuyền — thẻ màu. Nhấn nút để copy toàn bộ link, hoặc bấm từng thẻ để mở trang nguồn.</p>
+  </header>
+
+  <div class="toolbar">
+    <button class="copy-btn" id="copyAll" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      <span id="btnLabel">Copy toàn bộ link</span>
+    </button>
+    <span class="count" id="count"></span>
+  </div>
+
+  <main id="list"></main>
+
+  <div class="legend">
+    <span><b>License:</b></span>
+    <span class="row"><span class="dot cc0"></span> CC0 — dùng tự do, không cần ghi công</span>
+    <span class="row"><span class="dot by"></span> CC BY — bắt buộc ghi công tác giả</span>
+    <span class="row"><span class="dot var"></span> Tùy nguồn — đọc kỹ license từng file/asset</span>
+  </div>
+</div>
+
+<div class="toast" id="toast">Đã copy toàn bộ link!</div>
+
+<script>
+  const DATA = [
+    { cat: "Nguồn tổng hợp", items: [
+      { name: "Unity Asset Store — lọc Free", url: "https://assetstore.unity.com/?price=0-0", lic: "var" },
+      { name: "Kenney — asset casual/low-poly", url: "https://kenney.nl/assets", lic: "cc0" },
+      { name: "Poly Pizza — model low-poly", url: "https://poly.pizza", lic: "cc0" },
+      { name: "itch.io — Free game assets", url: "https://itch.io/game-assets/free", lic: "var" },
+    ]},
+    { cat: "3D & môi trường low-poly", items: [
+      { name: "Synty POLYGON Starter (publisher)", url: "https://assetstore.unity.com/publishers/5217", lic: "var" },
+      { name: "Quaternius — low-poly packs", url: "https://quaternius.com", lic: "cc0" },
+    ]},
+    { cat: "Vật liệu & texture (PBR)", items: [
+      { name: "Poly Haven — texture / HDRI / model", url: "https://polyhaven.com", lic: "cc0" },
+      { name: "ambientCG — texture PBR", url: "https://ambientcg.com", lic: "cc0" },
+    ]},
+    { cat: "UI · Icon · Font", items: [
+      { name: "Kenney UI Pack", url: "https://kenney.nl/assets/ui-pack", lic: "cc0" },
+      { name: "Game-icons.net — 4000+ icon", url: "https://game-icons.net", lic: "by" },
+      { name: "Google Fonts", url: "https://fonts.google.com", lic: "var" },
+    ]},
+    { cat: "Âm thanh & nhạc", items: [
+      { name: "Freesound — SFX", url: "https://freesound.org", lic: "var" },
+      { name: "Kenney Audio — SFX game", url: "https://kenney.nl/assets?q=audio", lic: "cc0" },
+      { name: "OpenGameArt", url: "https://opengameart.org", lic: "var" },
+      { name: "Incompetech — nhạc nền", url: "https://incompetech.com/music/", lic: "by" },
+    ]},
+    { cat: "VFX & Shader", items: [
+      { name: "Unity Particle Pack", url: "https://assetstore.unity.com/packages/vfx/particles/particle-pack-127325", lic: "var" },
+      { name: "DOTween — tween/animation", url: "http://dotween.demigiant.com/", lic: "var" },
+    ]},
+  ];
+
+  const LIC_LABEL = { cc0: "CC0", by: "CC BY", var: "Tùy nguồn" };
+
+  const listEl = document.getElementById("list");
+  let total = 0;
+
+  for (const group of DATA) {
+    const section = document.createElement("section");
+    section.className = "cat";
+
+    const head = document.createElement("div");
+    head.className = "cat-head";
+    const h2 = document.createElement("h2");
+    h2.textContent = group.cat;
+    const n = document.createElement("span");
+    n.className = "n";
+    n.textContent = group.items.length + " nguồn";
+    head.append(h2, n);
+
+    const ul = document.createElement("ul");
+    ul.className = "links";
+
+    for (const it of group.items) {
+      total++;
+      const a = document.createElement("a");
+      a.className = "link";
+      a.href = it.url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = it.name;
+
+      const url = document.createElement("span");
+      url.className = "url";
+      url.textContent = it.url;
+
+      const lic = document.createElement("span");
+      lic.className = "lic " + it.lic;
+      lic.textContent = LIC_LABEL[it.lic];
+
+      a.append(name, url, lic);
+      ul.appendChild(a);
+    }
+
+    section.append(head, ul);
+    listEl.appendChild(section);
+  }
+
+  document.getElementById("count").textContent = total + " nguồn tất cả";
+
+  function buildText() {
+    const lines = [];
+    for (const group of DATA) {
+      lines.push(group.cat.toUpperCase());
+      for (const it of group.items) {
+        lines.push(`${it.name} — ${it.url}`);
+      }
+      lines.push("");
+    }
+    return lines.join("\n").trim();
+  }
+
+  const btn = document.getElementById("copyAll");
+  const label = document.getElementById("btnLabel");
+  const toast = document.getElementById("toast");
+  let resetTimer = null;
+
+  async function copyAll() {
+    const text = buildText();
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); }
+      catch (err) { window.prompt("Copy thủ công (Ctrl/Cmd+C):", text); }
+      document.body.removeChild(ta);
+    }
+    btn.classList.add("done");
+    label.textContent = "Đã copy!";
+    toast.classList.add("show");
+    clearTimeout(resetTimer);
+    resetTimer = setTimeout(() => {
+      btn.classList.remove("done");
+      label.textContent = "Copy toàn bộ link";
+      toast.classList.remove("show");
+    }, 2200);
+  }
+
+  btn.addEventListener("click", copyAll);
+</script>

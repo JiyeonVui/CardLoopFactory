@@ -68,9 +68,12 @@ public class GameContext : MonoBehaviour
         ITrayController trayController = ServiceLocator.Instance.Resolve<ITrayController>();
         trayController.Init(level);
 
+        // Số tray của level để đếm điều kiện thắng (mỗi tray release xong đếm ngược).
+        _contextData.gameController.SetNumberOfTray(level.TrayModels.Count);
+
         // Dựng quỹ đạo belt (chữ U) từ waypoint của level.
         IBeltController beltController = ServiceLocator.Instance.Resolve<IBeltController>();
-        beltController.Init(level.BeltPathPoints, level.BeltCornerRadius, level.BeltVelocity);
+        beltController.Init(level.BeltPathPoints, level.BeltCornerRadius, level.BeltVelocity, level.MaxCardsInBelt);
 
         // Đặt marker startBelt/endBelt vào đúng điểm đầu/cuối path sau khi path đã dựng.
         _contextData.gameController.PlaceBeltMarkers(beltController);

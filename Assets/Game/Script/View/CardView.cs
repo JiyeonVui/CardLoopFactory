@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DG.Tweening;
 using Script.Engine.Manager.Pooling;
 using UnityEngine;
@@ -5,7 +6,7 @@ using UnityEngine.EventSystems;
 
 public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable, IPointerClickHandler
 {
-    [SerializeField] private MeshRenderer _meshRenderer;
+    [SerializeField] private List<MeshRenderer> _meshRenderer;
 
     // One material per CardColor. Order in the Inspector MUST match the CardColor
     // enum: Red, Yellow, Blue, Green, Purple, Pink, Orange.
@@ -136,7 +137,10 @@ public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable, 
     }
 
     // Click vào card: nhờ tray gốc phát distribution cho đúng nhóm màu của card.
-    // Chỉ bắn 1 lần (chống race khi các card sát nhau) và bỏ qua nếu card đã rời tray.
+    // Bỏ qua nếu card đã rời tray (đã bay lên belt -> ClearOwnerTray null _ownerTray).
+    // KHÔNG tự set _isDistributed ở đây: card bay lên belt được đánh dấu trong
+    // ClearOwnerTray(); card dư (belt hết chỗ) giữ nguyên để bấm phát tiếp. Chống mash
+    // do TrayView.DistributionCard lo bằng cooldown.
     public void OnPointerClick(PointerEventData eventData)
     {
         if (_isDistributed || _ownerTray == null)
@@ -144,7 +148,6 @@ public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable, 
             return;
         }
 
-        _isDistributed = true;
         _ownerTray.DistributionCard(_color);
     }
 
@@ -178,12 +181,10 @@ public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable, 
             return;
         }
 
-        if (_meshRenderer == null)
+        foreach (var mesh in _meshRenderer)
         {
-            _meshRenderer = GetComponent<MeshRenderer>();
+            mesh.sharedMaterial = material;
         }
-
-        _meshRenderer.sharedMaterial = material;
     }
     
 }

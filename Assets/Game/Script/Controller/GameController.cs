@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using DG.Tweening;
 using Extension;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 [Service(nameof(IGameController))]
@@ -9,7 +10,9 @@ public interface IGameController
 {
     Transform TrayHolderCard { get; }
     
-    void DistributionCard(List<CardView> cards, TrayModel trayModel, CardColor cardColor);
+    // Trả về số card thực sự được phát lên belt (có thể < số card đúng màu nếu belt
+    // sắp đầy). TrayView dùng số này để chỉ gỡ đúng các card đã bay.
+    int DistributionCard(List<CardView> cards, TrayModel trayModel, CardColor cardColor);
 
     void AddTrayMatchColor(TrayView trayView);
 
@@ -20,11 +23,20 @@ public interface IGameController
     void PlaceBeltMarkers(IBeltController beltController);
 
     void StopGame(bool isGameStop);
+
+    // Số tray của level; set lúc load level để đếm điều kiện thắng.
+    void SetNumberOfTray(int count);
+
+    // Gọi khi 1 tray chạy xong release anim: đếm ngược, = 0 thì thắng.
+    void OnTrayReleased();
 }
 public class GameController : MonoBehaviour, IGameController
 {
     [SerializeField] private Button _btnAddCard;
     [SerializeField] private GameObject _cardPrefab;
+
+    // Text hiển thị số card hiện tại/tối đa trên belt (current/max). Kéo vào inspector.
+    [SerializeField] private TMP_Text _beltCountLabel;
     
     [SerializeField] private GameObject startBelt;
     [SerializeField] private GameObject endBelt;
@@ -35,6 +47,7 @@ public class GameController : MonoBehaviour, IGameController
     
     [Inject] private IBeltController _beltController;
     [Inject] private ITrayController _trayController;
+    [Inject] private IMatchColorController _matchColorController;
 
     private const int CardsPerBatch = 10;
     private static readonly Vector3 SpawnPosition = new Vector3(1000, 0, 0);
@@ -47,6 +60,9 @@ public class GameController : MonoBehaviour, IGameController
     private const float StaggerDelay = 0.1f;
     private bool _isGameStop;
     private List<TrayView> _trayMatchColor = new List<TrayView>();
+
+    // Số tray còn lại của level; đếm ngược mỗi khi 1 tray release xong, = 0 thì thắng.
+    private int _numberOfTray;
     
 
     private void Awake()
@@ -58,36 +74,96 @@ public class GameController : MonoBehaviour, IGameController
     private void Start()
     {
         ServiceLocator.Instance.ResolveInjection(this);
+
+        // Lắng nghe belt để cập nhật text current/max. Vẽ luôn lần đầu theo trạng thái
+        // hiện tại (Init đã chạy trước ở GameContext.LoadLevel).
+        _beltController.OnCardCountChanged += UpdateBeltCountUI;
+        UpdateBeltCountUI(_beltController.CurrentCardCount, _beltController.MaxCardsInBelt);
+    }
+
+    private void OnDestroy()
+    {
+        if (_beltController != null)
+        {
+            _beltController.OnCardCountChanged -= UpdateBeltCountUI;
+        }
+    }
+
+    // Cập nhật text số card trên belt. Bắn từ BeltController.OnCardCountChanged mỗi khi
+    // card đáp lên belt hoặc rời belt.
+    private void UpdateBeltCountUI(int current, int max)
+    {
+        if (_beltCountLabel != null)
+        {
+            _beltCountLabel.text = $"{current}/{max}";
+        }
     }
 
     
     private void Update()
     {
         if(_isGameStop) return;
-        
+
         _beltController.UpdateCardPosition(Time.deltaTime);
+        CheckLose();
+    }
+
+    // Thua khi cả hai đều đúng: (1) match-color slot đã dùng hết (không tạo thêm slot
+    // được), (2) belt đầy và suốt >= 1 vòng không card nào match -> kẹt, không tiến
+    // triển được nữa. StopGame để không log lặp lại.
+    private void CheckLose()
+    {
+        if (_matchColorController.IsMatchColorFull() && _beltController.IsStalledForFullLoop)
+        {
+            Debug.LogError("Lose");
+            StopGame(true);
+        }
     }
     
 
-    public void DistributionCard(List<CardView> cards, TrayModel trayModel, CardColor cardColor)
+    public int DistributionCard(List<CardView> cards, TrayModel trayModel, CardColor cardColor)
     {
         if (startBelt == null)
         {
             Debug.LogError("[GameController] startBelt is not assigned.");
-            return;
+            return 0;
         }
 
-        var counter = 0;
+        // Đếm số card đúng màu muốn phát.
+        var wanted = 0;
         for (var i = 0; i < cards.Count; i++)
         {
             if (cards[i].CardColor == cardColor)
             {
-                
-                FlyCardToBelt(cards[i], counter * StaggerDelay, trayModel);
-                counter++;
+                wanted++;
             }
-               
         }
+
+        if (wanted == 0)
+        {
+            return 0;
+        }
+
+        // Giữ chỗ theo chỗ còn trống. Belt 24/24 -> granted = 0 -> dừng luôn.
+        int granted = _beltController.ReserveSlots(wanted);
+        if (granted <= 0)
+        {
+            return 0;
+        }
+
+        var counter = 0;
+        for (var i = 0; i < cards.Count && counter < granted; i++)
+        {
+            if (cards[i].CardColor != cardColor)
+            {
+                continue;
+            }
+
+            FlyCardToBelt(cards[i], counter * StaggerDelay, trayModel);
+            counter++;
+        }
+
+        return granted;
     }
 
     // Tray đã MoveToSlot tự đăng ký làm slot match-color, để card match tra ra
@@ -142,6 +218,21 @@ public class GameController : MonoBehaviour, IGameController
     public void StopGame(bool isGameStop)
     {
         _isGameStop = isGameStop;
+    }
+
+    public void SetNumberOfTray(int count)
+    {
+        _numberOfTray = Mathf.Max(0, count);
+    }
+
+    // 1 tray đã release xong: đếm ngược. Hết tray -> thắng.
+    public void OnTrayReleased()
+    {
+        _numberOfTray--;
+        if (_numberOfTray <= 0)
+        {
+            Debug.LogError("Win");
+        }
     }
 
     private void FlyCardToBelt(CardView cardView, float delay, TrayModel trayModel)

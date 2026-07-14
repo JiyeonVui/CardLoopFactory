@@ -1,10 +1,11 @@
+using System;
 using System.Collections.Generic;
 using Extension;
 using UnityEngine;
 [Service(nameof(IBeltController))]
 public interface IBeltController
 {
-    void Init(List<Vector3> waypoints, float cornerRadius, float velocity);
+    void Init(List<Vector3> waypoints, float cornerRadius, float velocity, int maxCardsInBelt);
     ConveyorCard AddNewCard(CardColor color);
     void UpdateCardPosition(float deltaTime);
 
@@ -13,6 +14,27 @@ public interface IBeltController
     Vector3 EndPosition { get; }
     Vector3 StartDirection { get; }
     Vector3 EndDirection { get; }
+
+    // Giới hạn số card trên belt (đặt theo level). CurrentCardCount là số card đang
+    // thực sự trên belt (để hiện current/max); AvailableSlots đã trừ cả card đang bay.
+    int MaxCardsInBelt { get; }
+    int CurrentCardCount { get; }
+    int AvailableSlots { get; }
+
+    void SetMaxCardsInBelt(int max);
+
+    // Giữ trước tối đa `requested` chỗ; trả về số chỗ thực sự giữ được (<= requested).
+    int ReserveSlots(int requested);
+
+    // Bắn mỗi khi card đáp lên belt hoặc rời belt: (current, max) cho UI cập nhật.
+    event Action<int, int> OnCardCountChanged;
+
+    // Belt đã đạt số card tối đa (current == max).
+    bool IsFull { get; }
+
+    // Belt đầy VÀ không có card nào rời belt (match) suốt >= 1 vòng belt -> kẹt.
+    // Dùng cho điều kiện thua (kết hợp với MatchColor slot đã dùng hết).
+    bool IsStalledForFullLoop { get; }
 }
 
 public class BeltController : IBeltController
@@ -24,7 +46,7 @@ public class BeltController : IBeltController
     // arc-length dọc path này thay vì cộng thẳng trục X.
     private BeltPath _path;
 
-    private float _velocity = 2.0f;
+    private float _velocity = 12.0f;
 
     private int _currentModelId;
 
@@ -35,21 +57,83 @@ public class BeltController : IBeltController
     // A card is considered to still occupy the start slot until it has moved
     // slightly past it, so we don't spawn a new card on top of a just-spawned one.
     // Đơn vị là arc-length dọc path.
-    private const float StartSlotTolerance = 0.3f;
+    private const float StartSlotTolerance = 1.8f;
 
     // Số đoạn nội suy cho mỗi góc bo — càng lớn càng mượt.
     private const int CornerSegments = 8;
 
+    // Giới hạn mặc định nếu level không khai báo MaxCardsInBelt (hoặc khai báo <= 0).
+    private const int DefaultMaxCardsInBelt = 24;
+    private int _maxCardsInBelt = DefaultMaxCardsInBelt;
+
+    // Card đã reserve lúc bấm distribute và đang bay tới belt nhưng CHƯA AddNewCard.
+    // Chỉ dùng để tính chỗ trống (chống overshoot khi bấm nhanh), KHÔNG hiển thị lên UI.
+    private int _pendingCount;
+
+    // Thời gian (giây) kể từ lần cuối belt thay đổi thành viên (có card lên/rời belt).
+    // Dùng để phát hiện belt kẹt: đầy mà suốt >= 1 vòng không card nào match.
+    private float _stallTimer;
+
+    public int MaxCardsInBelt => _maxCardsInBelt;
+    public int CurrentCardCount => cardInQueue.Count + cardOnBelt.Count;
+    public int AvailableSlots => Mathf.Max(0, _maxCardsInBelt - CurrentCardCount - _pendingCount);
+
+    public bool IsFull => CurrentCardCount >= _maxCardsInBelt;
+
+    public bool IsStalledForFullLoop
+    {
+        get
+        {
+            if (!IsFull || _path == null || _velocity <= 0f || _path.TotalLength <= 0f)
+            {
+                return false;
+            }
+
+            float loopTime = _path.TotalLength / _velocity;
+            return _stallTimer >= loopTime;
+        }
+    }
+
+    public event Action<int, int> OnCardCountChanged;
+
     // Gọi lúc load level (GameContext.LoadLevel) để dựng quỹ đạo belt từ waypoint JSON.
-    public void Init(List<Vector3> waypoints, float cornerRadius, float velocity)
+    public void Init(List<Vector3> waypoints, float cornerRadius, float velocity, int maxCardsInBelt)
     {
         _path = new BeltPath(waypoints, cornerRadius, CornerSegments);
         _velocity = velocity;
+        _maxCardsInBelt = maxCardsInBelt > 0 ? maxCardsInBelt : DefaultMaxCardsInBelt;
+        _pendingCount = 0;
 
         if (!_path.IsValid)
         {
             Debug.LogError("[BeltController] Belt path không hợp lệ; cần >= 2 waypoint trong level.");
         }
+
+        RaiseCardCountChanged();
+    }
+
+    public void SetMaxCardsInBelt(int max)
+    {
+        _maxCardsInBelt = Mathf.Max(0, max);
+        RaiseCardCountChanged();
+    }
+
+    // Belt 19/24, requested = 7 -> trả về 5. Belt 24/24 -> trả về 0.
+    public int ReserveSlots(int requested)
+    {
+        if (requested <= 0)
+        {
+            return 0;
+        }
+
+        int granted = Mathf.Min(requested, AvailableSlots);
+        _pendingCount += granted;
+        return granted;
+    }
+
+    private void RaiseCardCountChanged()
+    {
+        OnCardCountChanged?.Invoke(CurrentCardCount, _maxCardsInBelt);
     }
 
     public Vector3 StartPosition => _path != null ? _path.GetPositionAtDistance(0f) : Vector3.zero;
@@ -84,6 +168,11 @@ public class BeltController : IBeltController
         };
         cardInQueue.Enqueue(conveyorCard);
         _currentModelId++;
+
+        // Card đã "chạy vào belt": chuyển 1 chỗ từ pending sang thực -> current tăng 1.
+        _pendingCount = Mathf.Max(0, _pendingCount - 1);
+        RaiseCardCountChanged();
+
         return conveyorCard;
     }
 
@@ -93,6 +182,10 @@ public class BeltController : IBeltController
         {
             return;
         }
+
+        // Đo thời gian belt "đứng yên về thành viên" để phát hiện kẹt (reset khi có
+        // card lên/rời belt ở TrySpawnCardAtStart / RemoveMatchedCards).
+        _stallTimer += deltaTime;
 
         // Logic 1: move every card already on the belt along the U-shaped path.
         if (cardOnBelt.Count > 0)
@@ -112,7 +205,12 @@ public class BeltController : IBeltController
     // nên CardView vẫn giữ tham chiếu và tự animate card vào slot an toàn.
     private void RemoveMatchedCards()
     {
-        cardOnBelt.RemoveAll(conveyorCard => conveyorCard.IsMatched);
+        int removed = cardOnBelt.RemoveAll(conveyorCard => conveyorCard.IsMatched);
+        if (removed > 0)
+        {
+            _stallTimer = 0f;   // có card match rời belt -> belt còn tiến triển, không kẹt.
+            RaiseCardCountChanged();
+        }
     }
 
     // Cho từng card trên belt hỏi MatchColorController xem có khớp slot nào không.
@@ -169,15 +267,22 @@ public class BeltController : IBeltController
         nextCard.position = StartPosition;
         nextCard.direction = StartDirection;
         cardOnBelt.Add(nextCard);
+
+        // Card mới lên belt -> cho nó 1 vòng để có cơ hội match trước khi coi là kẹt.
+        _stallTimer = 0f;
     }
 
     private bool HasCardAtStart()
     {
+        float total = _path.TotalLength;
+
         foreach (ConveyorCard card in cardOnBelt)
         {
-            // So theo arc-length: card vừa lên belt (distance ~ 0) coi như đang chiếm
-            // slot đầu, tránh spawn chồng lên nhau.
-            if (card.distance <= StartSlotTolerance)
+            // So theo arc-length quanh "đường nối" của belt vòng lặp: card vừa lên belt
+            // (distance ~ 0) HOẶC card sắp wrap từ cuối về đầu (distance ~ total) đều coi
+            // như đang chiếm slot đầu -> chặn spawn để không chồng lên nhau tại điểm đầu.
+            if (card.distance <= StartSlotTolerance ||
+                card.distance >= total - StartSlotTolerance)
             {
                 return true;
             }

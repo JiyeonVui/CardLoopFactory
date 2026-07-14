@@ -15,25 +15,30 @@ public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscri
     [SerializeField] private List<MeshRenderer> _renderers = new List<MeshRenderer>();
     [SerializeField] private List<Material> _materials = new List<Material>();
     [SerializeField] private Transform _cardHolder;
-    [SerializeField] private Transform _wingLeft;
-    [SerializeField] private Transform _wingRight;
+    [SerializeField] private Transform _box;
     [SerializeField] private GameObject cardPrefab;
     
     private List<Vector3> _cardSlotPositions = new List<Vector3>()
     {
-        new Vector3 (-0.6f, 0, 0),
-        new Vector3 (-0.4f, 0, 0),
-        new Vector3 (-0.2f, 0, 0),
-        new Vector3 (0, 0, 0),
-        new Vector3 (0.2f, 0, 0),
-        new Vector3 (0.4f, 0, 0),
-        new Vector3 (0.6f, 0, 0),
+        new Vector3 (-0.69f, 0f, 2.1f),
+        new Vector3 (0.69f, 0f, 2.1f),
+        new Vector3 (-0.69f, 0f, 0.69f),
+        new Vector3 (0.69f, 0f, 0.69f),
+        new Vector3 (-0.69f, 0f, -0.69f),
+        new Vector3 (0.69f, 0f, -0.69f),
+        new Vector3 (-0.69f, 0f, -2.1f),
+        new Vector3 (0.69f, 0f, -2.1f),
     };
     private List<CardView> _cardViews = new List<CardView>();
     private TrayModel _trayModel;
     private MatchColorModel _matchColorModel;
     private bool _isOpen = false;
     private int _numOfCardsDoneAnim;
+
+    // Cooldown chống mash: 2 lần distribute liên tiếp trên cùng tray phải cách nhau
+    // ít nhất ngần này (giây, unscaled). Đủ ngắn để thao tác cố ý không thấy lag.
+    private const float DistributeCooldownSeconds = 0.1f;
+    private float _nextDistributeTime;
 
     // Thời gian tray bay vào vị trí slot match trên sân. Đi theo style hằng số
     // duration của GameController/CardView.
@@ -127,6 +132,7 @@ public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscri
         {
             _matchColorController.RemoveMatchColor(_trayModel.Id);
             _gameController.RemoveTrayMatchColor(this);
+            _gameController.OnTrayReleased();
             ReturnCardsToPool();
             _poolingService.ReturnObjectToPool<TrayView>(this, gameObject);
         });
@@ -216,8 +222,7 @@ public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscri
     // Step 3: a locked tray shows its wings (closed); an unlocked tray shows cards.
     private void ApplyLockState(bool isLocked)
     {
-        _wingLeft.gameObject.SetActive(isLocked);
-        _wingRight.gameObject.SetActive(isLocked);
+        _box.gameObject.SetActive(isLocked);
         _cardHolder.gameObject.SetActive(!isLocked);
     }
 
@@ -256,17 +261,37 @@ public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscri
     private void OnOpen()
     {
         _isOpen = true;
-        _wingLeft.gameObject.SetActive(false);
-        _wingRight.gameObject.SetActive(false);
+        _box.gameObject.SetActive(false);
         _cardHolder.gameObject.SetActive(true);
     }
 
     public void DistributionCard(CardColor cardColor)
     {
-        _gameController.DistributionCard(_cardViews, _trayModel, cardColor);
+        // Guard chống mash: bỏ qua các cú chạm dồn dập trong khoảng cooldown, tránh
+        // đếm/reserve thừa khi người chơi spam touch. Dùng unscaledTime để không phụ
+        // thuộc Time.timeScale (game có thể pause).
+        if (Time.unscaledTime < _nextDistributeTime)
+        {
+            return;
+        }
+        _nextDistributeTime = Time.unscaledTime + DistributeCooldownSeconds;
 
-        // Chỉ gỡ card đúng màu vừa phát; tray vẫn giữ các nhóm màu còn lại.
-        _cardViews.RemoveAll(card => card.CardColor == cardColor);
+        int sent = _gameController.DistributionCard(_cardViews, _trayModel, cardColor);
+
+        // Chỉ gỡ đúng `sent` card đầu tiên đúng màu (trùng đúng các card GameController
+        // đã chọn để FlyCardToBelt, vì cùng duyệt _cardViews theo thứ tự). Phần dư giữ
+        // lại trên tray để phát tiếp khi belt còn chỗ.
+        var removed = 0;
+        _cardViews.RemoveAll(card =>
+        {
+            if (removed >= sent || card.CardColor != cardColor)
+            {
+                return false;
+            }
+
+            removed++;
+            return true;
+        });
     }
 
     // Tray đã phát hết card: biến chính nó thành 1 slot match-color trên sân bằng

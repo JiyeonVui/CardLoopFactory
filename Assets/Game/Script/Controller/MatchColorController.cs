@@ -65,9 +65,9 @@ public class MatchColorController : IMatchColorController
 
     // Số card cần để hoàn thành 1 slot. LƯU Ý: lý tưởng nên lấy từ
     // TrayModel.Composition của tray tương ứng (mỗi tray trong level_test có
-    // Count = 7). Interface CreateMatchColor không truyền count nên tạm dùng hằng
+    // Count = 6). Interface CreateMatchColor không truyền count nên tạm dùng hằng
     // số này; nếu cần chính xác theo tray, thêm field required-count và truyền vào.
-    private const int DefaultSlotCapacity = 7;
+    private const int DefaultSlotCapacity = 6;
 
     private readonly List<MatchColorModel> _activeSlots = new List<MatchColorModel>();
 

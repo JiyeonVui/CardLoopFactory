@@ -24,6 +24,10 @@ public class LevelManager
     public float BeltCornerRadius;
     public float BeltVelocity;
 
+    // Số card tối đa được phép có mặt trên belt cùng lúc. <= 0 hoặc thiếu trong JSON
+    // thì BeltController dùng mặc định (24).
+    public int MaxCardsInBelt;
+
     // Loads a level JSON placed under any Resources folder (path without extension),
     // e.g. LoadFromResources("level_test") for Assets/Game/Resources/level_test.json.
     public static LevelManager LoadFromResources(string resourcePath)
