@@ -45,6 +45,10 @@ namespace Extension {
 
             var matchColorController = new MatchColorController();
             services.Provide(matchColorController);
+            
+            var managerAudio = new ManagerAudio();
+            await managerAudio.Initialize();
+            services.Provide(managerAudio);
 
         }
     }

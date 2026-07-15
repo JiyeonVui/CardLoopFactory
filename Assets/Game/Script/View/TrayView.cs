@@ -40,9 +40,13 @@ public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscri
     private const float DistributeCooldownSeconds = 0.1f;
     private float _nextDistributeTime;
 
-    // Thời gian tray bay vào vị trí slot match trên sân. Đi theo style hằng số
-    // duration của GameController/CardView.
-    private const float MoveToSlotDuration = 0.3f;
+    // Anim vào slot 2 nhịp: bay lên điểm A (ngay trên slot, cao ReachHeight) trong khi
+    // xoay về đúng hướng, rồi đáp thẳng xuống slot. Đi theo style hằng số duration của
+    // GameController/CardView.
+    private const float MoveToReachHeight = 3f;
+    private const float MoveToReachDuration = 0.3f;
+    // Nhịp đáp dài hơn chút để nhìn rõ cú nảy khi chạm slot (Ease.OutBounce).
+    private const float MoveToLandDuration = 0.35f;
 
     // Anim release khi slot đủ card: bay lên độ cao Y rồi bay ngang ra khỏi màn hình
     // theo trục X trước khi despawn về pool.
@@ -138,6 +142,25 @@ public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscri
         });
     }
 
+    // Despawn tray + toàn bộ card đang nằm dưới nó (card chưa phát lẫn card đã match)
+    // về pool. Dùng cho retry reset in-scene: dừng tween đang chạy để không teleport,
+    // trả card rồi trả chính tray về đúng typed pool.
+    public void DespawnToPool()
+    {
+        transform.DOKill();
+
+        // Gỡ tham chiếu tray này ở GameController (nếu đang là match-slot) để không còn
+        // reference tới object đã trả pool. Field tray chưa lên slot thì đây là no-op.
+        if (_gameController != null)
+        {
+            _gameController.RemoveTrayMatchColor(this);
+        }
+
+        // Trả card đang nằm dưới CardHolder của tray (card chưa phát lẫn card đã match).
+        ReturnCardsToPool();
+        _poolingService.ReturnObjectToPool<TrayView>(this, gameObject);
+    }
+
     // Trả card đã match về pool trước khi despawn tray. Các card này được reparent
     // về _cardHolder (xem CardView.MoveIntoMatchSlot) nên không còn trong _cardViews.
     // Gom trước rồi mới trả để không sửa collection con trong lúc đang duyệt.
@@ -207,9 +230,11 @@ public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscri
                     return;
                 }
 
-                // Reuse cards from the pool instead of Instantiate; followParent keeps
-                // the card under _cardHolder so the slot offset stays local to the tray.
+                // Reuse cards from the pool instead of Instantiate. Card tái sử dụng từ
+                // pool đang nằm dưới Pool Holder, nên reparent tường minh về _cardHolder để
+                // slot offset (localPosition) đúng theo hệ toạ độ của tray.
                 CardView cardView = _factory.Spawn<CardView>(cardPrefab, _cardHolder, true);
+                cardView.transform.SetParent(_cardHolder, worldPositionStays: false);
                 cardView.transform.localPosition = _cardSlotPositions[slotIndex];
                 cardView.Init(group.Color, this);
 
@@ -324,9 +349,15 @@ public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscri
 
         transform.SetParent(_gameController.TrayHolderCard, worldPositionStays: true);
 
+        // Điểm A: ngay trên slot đích, cao thêm ReachHeight theo trục Y.
+        Vector3 reachLocalPos = targetLocalPos + new Vector3(0f, MoveToReachHeight, 0f);
+
         Sequence sequence = DOTween.Sequence();
-        sequence.Append(transform.DOLocalMove(targetLocalPos, MoveToSlotDuration).SetEase(Ease.OutQuad));
-        sequence.Join(transform.DOLocalRotate(targetLocalRotation, MoveToSlotDuration));
+        // Nhịp 1: bay lên A, xoay về đúng hướng — chạy song song.
+        sequence.Append(transform.DOLocalMove(reachLocalPos, MoveToReachDuration).SetEase(Ease.OutQuad));
+        sequence.Join(transform.DOLocalRotate(targetLocalRotation, MoveToReachDuration));
+        // Nhịp 2: đáp thẳng xuống slot, nảy nhẹ khi chạm.
+        sequence.Append(transform.DOLocalMove(targetLocalPos, MoveToLandDuration).SetEase(Ease.OutBounce));
         // Kết thúc anim: tray coi như đã tiêu thụ → mở khoá các tray bị nó chặn.
         // View của các tray đó tự phản ứng qua Update (poll IsLocked).
         sequence.OnComplete(() => _trayController.UnlockTraysBlockedBy(_trayModel.Id));

@@ -33,9 +33,11 @@ public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable, 
     // đã bắn tín hiệu distribution rồi thì không bắn lại.
     private bool _isDistributed = false;
     
-    // Thời gian bay từ belt vào đúng ô trong slot match. Đi theo style hằng số
-    // duration của GameController.FlyCardToBelt.
-    private const float MoveToSlotDuration = 0.3f;
+    // Bay từ belt vào ô slot match theo cung nhảy (lên cao rồi đáp xuống) kèm xoay
+    // tròn 360° quanh trục Y. Đi theo style hằng số duration của GameController.
+    private const float MoveToSlotDuration = 0.45f;
+    private const float MatchJumpPower = 5f;
+    private const int MatchJumpCount = 1;
 
     private void Update()
     {
@@ -88,8 +90,12 @@ public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable, 
         Vector3 targetPos = _trayView.GetCardPosition(_conveyorCard.MatchSlotIndex);
 
         Sequence sequence = DOTween.Sequence();
-        sequence.Append(transform.DOLocalMove(targetPos, MoveToSlotDuration).SetEase(Ease.OutQuad));
-        sequence.Join(transform.DOLocalRotate(Vector3.zero, MoveToSlotDuration));
+        // Bay theo cung nhảy (lên cao rồi đáp xuống) vào ô slot.
+        sequence.Append(transform.DOLocalJump(targetPos, MatchJumpPower, MatchJumpCount, MoveToSlotDuration)
+            .SetEase(Ease.OutQuad));
+        // Xoay đủ 2 vòng 720° quanh trục Y rồi kết ở 0 (FastBeyond360 cho phép quay
+        // vượt 360 để ép trọn 2 vòng, đích 0/720/0 ≡ card thẳng theo ô).
+        sequence.Join(transform.DOLocalRotate(new Vector3(0f, 720f, 0f), MoveToSlotDuration, RotateMode.FastBeyond360));
         // Anim xong: báo cho tray-slot biết đã có thêm 1 card vào chỗ, để nó đếm và
         // release slot khi đủ số card (xem TrayView.CardFlyDone).
         sequence.OnComplete(() => _trayView.CardFlyDone());
@@ -125,7 +131,8 @@ public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable, 
     public void ReturnToPool()
     {
         transform.DOKill();
-        transform.SetParent(null, worldPositionStays: false);
+        // ReturnObjectToPool tự reparent card về Pool Holder (bất biến: trong pool ⇒ dưới
+        // Pool Holder), nên không cần detach thủ công ở đây.
         _poolingService.ReturnObjectToPool<CardView>(this, gameObject);
     }
 

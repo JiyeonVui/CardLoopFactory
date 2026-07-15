@@ -29,6 +29,14 @@ public interface IGameController
 
     // Gọi khi 1 tray chạy xong release anim: đếm ngược, = 0 thì thắng.
     void OnTrayReleased();
+
+    // Bắn khi game kết thúc. GameContext lắng nghe để hiện màn kết quả (UIManager).
+    event Action OnWin;
+    event Action OnLose;
+
+    // Reset trạng thái runtime cho lần chơi lại (retry). Xoá danh sách tray match-color
+    // và bộ đếm tray; LoadLevel sau đó sẽ set lại số tray.
+    void ResetForReplay();
 }
 public class GameController : MonoBehaviour, IGameController
 {
@@ -43,6 +51,7 @@ public class GameController : MonoBehaviour, IGameController
     [SerializeField] private Transform beltHolderCard;
     [SerializeField] private Transform trayHolderCard;
     public Transform TrayHolderCard => trayHolderCard;
+    public Transform BeltHolderCard => beltHolderCard;
     
     
     [Inject] private IBeltController _beltController;
@@ -58,8 +67,16 @@ public class GameController : MonoBehaviour, IGameController
     private const int JumpCount = 1;
     private const float ScaleDuration = 0.2f;
     private const float StaggerDelay = 0.1f;
+
+    // Card đi vào ống ở đầu belt: nhảy cung lên miệng ống (cao PipeHeight theo Y so với
+    // startBelt) rồi rơi thẳng xuống đúng vị trí startBelt (chui qua ống).
+    private const float PipeHeight = 7f;
+    private const float PipeDropDuration = 0.25f;
     private bool _isGameStop;
     private List<TrayView> _trayMatchColor = new List<TrayView>();
+
+    public event Action OnWin;
+    public event Action OnLose;
 
     // Số tray còn lại của level; đếm ngược mỗi khi 1 tray release xong, = 0 thì thắng.
     private int _numberOfTray;
@@ -117,6 +134,7 @@ public class GameController : MonoBehaviour, IGameController
         {
             Debug.LogError("Lose");
             StopGame(true);
+            OnLose?.Invoke();
         }
     }
     
@@ -220,6 +238,13 @@ public class GameController : MonoBehaviour, IGameController
         _isGameStop = isGameStop;
     }
 
+    public void ResetForReplay()
+    {
+        StopGame(true);
+        _trayMatchColor.Clear();
+        _numberOfTray = 0;
+    }
+
     public void SetNumberOfTray(int count)
     {
         _numberOfTray = Mathf.Max(0, count);
@@ -232,6 +257,8 @@ public class GameController : MonoBehaviour, IGameController
         if (_numberOfTray <= 0)
         {
             Debug.LogError("Win");
+            StopGame(true);
+            OnWin?.Invoke();
         }
     }
 
@@ -248,15 +275,23 @@ public class GameController : MonoBehaviour, IGameController
         // world pose so it doesn't teleport at the start of the animation.
         cardTransform.SetParent(beltHolderCard, worldPositionStays: true);
 
+        // Đích cuối = đầu belt; miệng ống ở ngay trên đó, cao PipeHeight theo trục Y world.
+        Vector3 targetPos = startBelt.transform.position;
+        Vector3 pipeMouthPos = targetPos + Vector3.up * PipeHeight;
+
         Sequence sequence = DOTween.Sequence();
         sequence.AppendInterval(delay);
+        // Nhịp 1: nhảy cung lên miệng ống, đồng thời xoay đúng hướng world của điểm đầu
+        // path — trùng rotation mà CardView.Update sẽ set (FromToRotation(+X,
+        // StartDirection)) nên không giật. Dùng DORotate (world) vì heading là hướng world.
         sequence.Append(cardTransform
-            .DOJump(startBelt.transform.position, JumpPower, JumpCount, FlyDuration)
+            .DOJump(pipeMouthPos, JumpPower, JumpCount, FlyDuration)
             .SetEase(Ease.OutQuad));
-        // Xoay card đúng hướng world của điểm đầu path lúc đáp — trùng rotation mà
-        // CardView.Update sẽ set (FromToRotation(+X, StartDirection)) nên không giật.
-        // Dùng DORotate (world) vì heading là hướng world, không phải local nữa.
         sequence.Join(cardTransform.DORotate(GetBeltHeadingRotation(), FlyDuration));
+        // Nhịp 2: rơi thẳng xuống targetpos (chui qua ống), tăng tốc khi rơi.
+        sequence.Append(cardTransform
+            .DOMove(targetPos, PipeDropDuration)
+            .SetEase(Ease.InQuad));
         sequence.OnComplete(() =>
         {
             var converyCard = _beltController.AddNewCard(cardView.CardColor);

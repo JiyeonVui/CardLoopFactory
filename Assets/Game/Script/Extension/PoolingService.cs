@@ -368,6 +368,10 @@ namespace Script.Engine.Manager.Pooling {
             var pool = pools.Find(s => s.AllIdList.Contains(obj.GetInstanceID()));
             if (pool != null) {
                 obj.SetActive(false);
+                // Bất biến: object đã ở trong pool thì nằm dưới Pool Holder. Nhờ vậy các
+                // holder trên sân chỉ chứa object đang active, reset duyệt holder không
+                // đụng phải object đã pooled.
+                obj.transform.SetParent(_poolingHolder.transform, false);
                 pool.InactiveObjects.Enqueue(obj);
                 pool.InactiveType.Enqueue(type);
             } else {

@@ -56,7 +56,6 @@ namespace Extension {
             _audioSo = await Resources.LoadAsync<AudioSo>("Audio/AudioClip") as AudioSo;
             CreateAudioObject();
             UpdateSoundVolume();
-            await UniTask.SwitchToThreadPool();
         }
 
         private void CreateAudioObject() {

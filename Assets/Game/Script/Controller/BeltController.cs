@@ -6,6 +6,11 @@ using UnityEngine;
 public interface IBeltController
 {
     void Init(List<Vector3> waypoints, float cornerRadius, float velocity, int maxCardsInBelt);
+
+    // Xoá sạch card đang chờ/đang trên belt + reset bộ đếm. Dùng khi retry reset in-scene
+    // (CardView tương ứng do GameContext trả về pool riêng).
+    void ClearCards();
+
     ConveyorCard AddNewCard(CardColor color);
     void UpdateCardPosition(float deltaTime);
 
@@ -109,6 +114,18 @@ public class BeltController : IBeltController
             Debug.LogError("[BeltController] Belt path không hợp lệ; cần >= 2 waypoint trong level.");
         }
 
+        RaiseCardCountChanged();
+    }
+
+    // Reset toàn bộ card trên belt về rỗng (giữ nguyên path/velocity đã Init). Bộ đếm
+    // model id về 0 để lần chơi mới bắt đầu lại từ đầu.
+    public void ClearCards()
+    {
+        cardInQueue.Clear();
+        cardOnBelt.Clear();
+        _pendingCount = 0;
+        _stallTimer = 0f;
+        _currentModelId = 0;
         RaiseCardCountChanged();
     }
 

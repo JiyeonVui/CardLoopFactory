@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Extension;
 using UnityEngine;
 
@@ -63,10 +64,8 @@ public class MatchColorController : IMatchColorController
     // độ x, |card.x - slot.x| < ngưỡng thì match (bỏ qua y/z).
     private const float MatchTolerance = 0.1f;
 
-    // Số card cần để hoàn thành 1 slot. LƯU Ý: lý tưởng nên lấy từ
-    // TrayModel.Composition của tray tương ứng (mỗi tray trong level_test có
-    // Count = 6). Interface CreateMatchColor không truyền count nên tạm dùng hằng
-    // số này; nếu cần chính xác theo tray, thêm field required-count và truyền vào.
+    // Fallback số card cần để hoàn thành 1 slot khi tray không có Composition hợp lệ.
+    // Bình thường lấy đúng theo tổng card gốc của tray (GetRequiredCardCount).
     private const int DefaultSlotCapacity = 6;
 
     private readonly List<MatchColorModel> _activeSlots = new List<MatchColorModel>();
@@ -124,7 +123,7 @@ public class MatchColorController : IMatchColorController
             TrayId = trayModel.Id,
             CardColor = trayModel.CardColor,
             NumberOfCards = 0,
-            NumberOfSlotsCards = DefaultSlotCapacity,
+            NumberOfSlotsCards = GetRequiredCardCount(trayModel),
             SlotPosition = trayPosition.SlotPosition,
             SlotRotation = trayPosition.SlotRotation,
             SlotId = trayPosition.Id
@@ -132,6 +131,20 @@ public class MatchColorController : IMatchColorController
 
         _activeSlots.Add(model);
         return model;
+    }
+
+    // Số card cần để hoàn thành slot = tổng card gốc của tray (Composition không bị
+    // sửa khi phát card; chỉ _cardViews bị gỡ). KHÔNG dùng TrayModel.TotalCardCount vì
+    // giá trị đó bị đếm ngược khi distribute nên lúc này đã về ~0. Fallback nếu thiếu
+    // Composition để tránh slot không bao giờ release.
+    private int GetRequiredCardCount(TrayModel trayModel)
+    {
+        if (trayModel?.Composition == null || trayModel.Composition.Count == 0)
+        {
+            return DefaultSlotCapacity;
+        }
+
+        return trayModel.Composition.Sum(group => group.Count);
     }
 
     public void CheckMatchColor(ConveyorCard conveyorCard)
