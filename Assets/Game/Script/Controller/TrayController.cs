@@ -10,6 +10,10 @@ public interface ITrayController
     void RemoveTrayModel(TrayModel trayModel);
     void OnCardDistributed(TrayModel trayModel);
     void UnlockTraysBlockedBy(int completedTrayId);
+
+    // Còn tray đã rỗng (đã phát hết card) đang nằm trên sân, chưa move lên slot và
+    // không bị khoá -> người chơi còn nước tạo slot match-color mới. Dùng để check thua.
+    bool HasEmptyTrayToMove();
 }
 
 public class TrayController : ITrayController
@@ -42,6 +46,18 @@ public class TrayController : ITrayController
             trayModel.State = TrayState.Empty;
         }
     }
+    // Tray rỗng còn trên sân = State Empty (đã phát hết card) nhưng chưa move lên slot
+    // (lúc move sẽ set IsUsed) và không bị khoá.
+    public bool HasEmptyTrayToMove()
+    {
+        if (_levelManager?.TrayModels == null)
+        {
+            return false;
+        }
+
+        return _levelManager.TrayModels.Any(tray => tray.State == TrayState.Empty && !tray.IsLocked);
+    }
+
     public void UnlockTraysBlockedBy(int completedTrayId)
     {                                                    
         if (_levelManager?.TrayModels == null)           

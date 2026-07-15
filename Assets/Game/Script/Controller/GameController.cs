@@ -40,7 +40,6 @@ public interface IGameController
 }
 public class GameController : MonoBehaviour, IGameController
 {
-    [SerializeField] private Button _btnAddCard;
     [SerializeField] private GameObject _cardPrefab;
 
     // Text hiển thị số card hiện tại/tối đa trên belt (current/max). Kéo vào inspector.
@@ -57,6 +56,7 @@ public class GameController : MonoBehaviour, IGameController
     [Inject] private IBeltController _beltController;
     [Inject] private ITrayController _trayController;
     [Inject] private IMatchColorController _matchColorController;
+    [Inject] private IManagerAudio _managerAudio;
 
     private const int CardsPerBatch = 10;
     private static readonly Vector3 SpawnPosition = new Vector3(1000, 0, 0);
@@ -88,12 +88,14 @@ public class GameController : MonoBehaviour, IGameController
     }
     
 
-    private void Start()
+    // Gọi từ GameContext SAU khi ServiceInitializer.InitializeAsync() xong, để chắc chắn
+    // mọi service (belt/tray/audio…) đã đăng ký trước khi ResolveInjection. Không dùng
+    // Unity Start() vì nó chạy độc lập, có thể trượt trước lúc service kịp đăng ký.
+    public void Init()
     {
         ServiceLocator.Instance.ResolveInjection(this);
 
-        // Lắng nghe belt để cập nhật text current/max. Vẽ luôn lần đầu theo trạng thái
-        // hiện tại (Init đã chạy trước ở GameContext.LoadLevel).
+        // Lắng nghe belt để cập nhật text current/max. Vẽ luôn lần đầu theo trạng thái hiện tại.
         _beltController.OnCardCountChanged += UpdateBeltCountUI;
         UpdateBeltCountUI(_beltController.CurrentCardCount, _beltController.MaxCardsInBelt);
     }
@@ -125,17 +127,25 @@ public class GameController : MonoBehaviour, IGameController
         CheckLose();
     }
 
-    // Thua khi cả hai đều đúng: (1) match-color slot đã dùng hết (không tạo thêm slot
-    // được), (2) belt đầy và suốt >= 1 vòng không card nào match -> kẹt, không tiến
-    // triển được nữa. StopGame để không log lặp lại.
+    // Thua khi belt đã kẹt (đầy + đi trọn >= 1 vòng không card nào match) VÀ người chơi
+    // không còn nước tạo tiến triển: không tạo được slot match-color mới. StopGame để
+    // không log/bắn sự kiện lặp lại.
     private void CheckLose()
     {
-        if (_matchColorController.IsMatchColorFull() && _beltController.IsStalledForFullLoop)
+        if (_beltController.IsStalledForFullLoop && !CanCreateNewMatchSlot())
         {
             Debug.LogError("Lose");
             StopGame(true);
             OnLose?.Invoke();
         }
+    }
+
+    // Còn nước tạo slot match-color mới ⇔ còn chỗ match-color VÀ còn tray rỗng trên sân
+    // để move lên slot. Thiếu một trong hai (hết chỗ slot, hoặc không còn tray rỗng để
+    // move) thì khi belt kẹt là bế tắc -> thua.
+    private bool CanCreateNewMatchSlot()
+    {
+        return !_matchColorController.IsMatchColorFull() && _trayController.HasEmptyTrayToMove();
     }
     
 
@@ -236,6 +246,7 @@ public class GameController : MonoBehaviour, IGameController
     public void StopGame(bool isGameStop)
     {
         _isGameStop = isGameStop;
+        _beltCountLabel.gameObject.SetActive(!isGameStop);
     }
 
     public void ResetForReplay()
@@ -281,6 +292,10 @@ public class GameController : MonoBehaviour, IGameController
 
         Sequence sequence = DOTween.Sequence();
         sequence.AppendInterval(delay);
+        // Phát distribute sound đúng lúc card này bắt đầu bay (kèm haptic trong Manager).
+        // Đặt sau AppendInterval để mỗi card cách nhau StaggerDelay > MinPlayInterval, nếu
+        // để ở đầu hàm thì mọi card gọi cùng frame và bị throttle gộp thành 1 tiếng.
+        sequence.AppendCallback(() => _managerAudio.PlayDistributeSound());
         // Nhịp 1: nhảy cung lên miệng ống, đồng thời xoay đúng hướng world của điểm đầu
         // path — trùng rotation mà CardView.Update sẽ set (FromToRotation(+X,
         // StartDirection)) nên không giật. Dùng DORotate (world) vì heading là hướng world.

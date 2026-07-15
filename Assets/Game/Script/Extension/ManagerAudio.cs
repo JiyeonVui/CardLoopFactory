@@ -35,6 +35,10 @@ namespace Extension {
         void PlayClickSound();
         void PlayPopupSound();
         void PlayEarnSound();
+        void PlayDistributeSound();
+        void PlayCollectionSound();
+        void PlayMatchSound();
+        void PlayBackgroundMusic();
     }
 
     public class ManagerAudio : IManagerAudio {
@@ -53,7 +57,8 @@ namespace Extension {
 
         public async UniTask Initialize() {
             await UniTask.SwitchToMainThread();
-            _audioSo = await Resources.LoadAsync<AudioSo>("Audio/AudioClip") as AudioSo;
+            _audioSo = await Resources.LoadAsync<AudioSo>("Audio/AudioSo") as AudioSo;
+
             CreateAudioObject();
             UpdateSoundVolume();
         }
@@ -187,7 +192,6 @@ namespace Extension {
         }
 
         public void PlayClickSound() {
-            HapticController.Touch();
             PlayAudio(_audioSo.clickSound);
         }
 
@@ -196,7 +200,23 @@ namespace Extension {
         }
 
         public void PlayEarnSound() {
-            PlayAudio(_audioSo.earnSound);
+            // PlayAudio(_audioSo.earnSound);
+        }
+
+        public void PlayDistributeSound() {
+            PlayAudio(_audioSo.distributeSound);
+        }
+
+        public void PlayCollectionSound() {
+            PlayAudio(_audioSo.collectionSound);
+        }
+
+        public void PlayMatchSound() {
+            PlayAudio(_audioSo.matchSound);
+        }
+
+        public void PlayBackgroundMusic() {
+            PlayMusic(_audioSo.backgroundSound, loop: true);
         }
 
         private void SetSpatialSfxVolume(int channel, float volume) {

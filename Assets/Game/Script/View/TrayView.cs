@@ -56,9 +56,12 @@ public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscri
     private const float ReleaseAwayDuration = 0.5f;
     private IGameController _gameController;
     private IGameEntityFactory _factory;
-    private IPoolingService _poolingService;
+    // Inject mỗi lần spawn/reuse qua ReadyToStartGame → ResolveInjection, nên luôn có mặt
+    // (không phụ thuộc SetPoolingService — đường tắt InactiveType của pool có thể bỏ qua nó).
+    [Inject] private IPoolingService _poolingService;
     [Inject] private IMatchColorController _matchColorController;
     [Inject] private ITrayController _trayController;
+    [Inject] private IManagerAudio _managerAudio;
 
     public int TrayId => _trayModel.Id;
     public Transform CardHolder => _cardHolder;
@@ -129,6 +132,9 @@ public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscri
     // Kết thúc tween mới gỡ slot khỏi controller/list và despawn tray về pool.
     private void PlayReleaseAnim()
     {
+        // Tray đủ card, chạy anim release: phát match sound 1 lần.
+        _managerAudio.PlayMatchSound();
+
         Sequence sequence = DOTween.Sequence();
         sequence.Append(transform.DOLocalMoveY(ReleaseUpHeight, ReleaseUpDuration).SetEase(Ease.OutQuad));
         sequence.Append(transform.DOLocalMoveX(ReleaseAwayX, ReleaseAwayDuration).SetEase(Ease.InQuad));
@@ -335,6 +341,13 @@ public class TrayView : MonoBehaviour, IPointerClickHandler, IGameContextSubscri
         {
             return;
         }
+
+        // Tray đã move lên slot: đánh dấu IsUsed để không còn tính là "tray rỗng trên sân"
+        // khi check thua (TrayController.HasEmptyTrayToMove).
+        _trayModel.State = TrayState.IsUsed;
+
+        // Tray di chuyển lên slot: phát distribute sound (kèm haptic trong Manager).
+        _managerAudio.PlayDistributeSound();
 
         // Đăng ký làm slot match-color để card khớp tra ra TrayView này theo TrayId
         // (CardView.MoveIntoMatchSlot → GameController.GetTrayView). Đăng ký ngay để

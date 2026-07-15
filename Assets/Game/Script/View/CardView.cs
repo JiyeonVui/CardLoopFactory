@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using DG.Tweening;
+using Extension;
 using Script.Engine.Manager.Pooling;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -16,7 +17,10 @@ public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable, 
     private bool _isMatch = false;
     private CardColor _color;
     private IGameController _gameController;
-    private IPoolingService _poolingService;
+    // Inject mỗi lần spawn/reuse qua ReadyToStartGame → ResolveInjection, nên luôn có mặt
+    // (không phụ thuộc SetPoolingService của pool — đường tắt InactiveType có thể bỏ qua nó).
+    [Inject] private IPoolingService _poolingService;
+    [Inject] private IManagerAudio _managerAudio;
     public CardColor CardColor
     {
         get => _color;
@@ -73,6 +77,9 @@ public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable, 
     {
         _isMatch = true;
 
+        // Card match trên belt và bay về tray: phát collection sound 1 lần.
+        _managerAudio.PlayCollectionSound();
+
         _trayView = _gameController.GetTrayView(_conveyorCard.TrayId);
         if (_trayView == null)
         {
@@ -104,6 +111,7 @@ public class CardView : MonoBehaviour, IGameContextSubscriber, IPoolReturnable, 
     public void ReadyToStartGame(GameContextData gameContextData)
     {
         _gameController = gameContextData.gameController;
+        ServiceLocator.Instance.ResolveInjection(this);
         ResetState();
     }
 

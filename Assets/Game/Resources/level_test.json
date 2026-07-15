@@ -6,24 +6,24 @@
       "IsLocked": false,
       "State": 0,
       "BlockedByTrayIds": [],
-      "Position": { "x": 5, "y": 1.2, "z": -10.5 },
-      "Rotation": { "x": 0, "y": 0, "z": 0 },
+      "Position": { "x": 5, "y": -0.4, "z": -12.2 },
+      "Rotation": { "x": 0, "y": 90, "z": 0 },
       "Composition": [
-        { "Color": 1, "Count": 4 },
-        { "Color": 2, "Count": 4 }
+        { "Color": 0, "Count": 4 },
+        { "Color": 1, "Count": 4 }
       ]
     },
     {
       "Id": 1,
       "CardColor": 1,
-      "IsLocked": true,
+      "IsLocked": false,
       "State": 0,
-      "BlockedByTrayIds": [0],
-      "Position": { "x": 5, "y": -0.4, "z": -12.2 },
+      "BlockedByTrayIds": [],
+      "Position": { "x": 5, "y": -0.4, "z": -9 },
       "Rotation": { "x": 0, "y": 90, "z": 0 },
       "Composition": [
-        { "Color": 2, "Count": 6 },
-        { "Color": 3, "Count": 2 }
+        { "Color": 0, "Count": 4 },
+        { "Color": 1, "Count": 4 }
       ]
     },
     {
@@ -31,22 +31,22 @@
       "CardColor": 2,
       "IsLocked": true,
       "State": 0,
-      "BlockedByTrayIds": [0],
-      "Position": { "x": 5, "y": -0.4, "z": -9 },
-      "Rotation": { "x": 0, "y": 90, "z": 0 },
+      "BlockedByTrayIds": [0,1],
+      "Position": { "x": 3.5, "y": -2, "z": -10.7 },
+      "Rotation": { "x": 0, "y": 0, "z": 0 },
       "Composition": [
-        { "Color": 3, "Count": 6 },
-        { "Color": 4, "Count": 2 }
+        { "Color": 2, "Count": 4 },
+        { "Color": 3, "Count": 4 }
       ]
     },
-    
     {
       "Id": 3,
       "CardColor": 3,
       "IsLocked": true,
       "State": 0,
-      "BlockedByTrayIds": [1,2],
-      "Position": { "x": 3, "y": -2, "z": -10.7 },
+      "BlockedByTrayIds": [0,1
+      ],
+      "Position": { "x": 7, "y": -2, "z": -10.7 },
       "Rotation": { "x": 0, "y": 0, "z": 0 },
       "Composition": [
         { "Color": 2, "Count": 4 },
@@ -55,15 +55,54 @@
     },
     {
       "Id": 4,
-      "CardColor": 4,
+      "CardColor": 0,
+      "IsLocked": false,
+      "State": 0,
+      "BlockedByTrayIds": [],
+      "Position": { "x": -5, "y": -0.4, "z": -12.2 },
+      "Rotation": { "x": 0, "y": -90, "z": 0 },
+      "Composition": [
+        { "Color": 0, "Count": 4 },
+        { "Color": 1, "Count": 4 }
+      ]
+    },
+    {
+      "Id": 5,
+      "CardColor": 1,
+      "IsLocked": false,
+      "State": 0,
+      "BlockedByTrayIds": [],
+      "Position": { "x": -5, "y": -0.4, "z": -9 },
+      "Rotation": { "x": 0, "y": -90, "z": 0 },
+      "Composition": [
+        { "Color": 0, "Count": 4 },
+        { "Color": 1, "Count": 4 }
+      ]
+    },
+    {
+      "Id": 6,
+      "CardColor": 2,
       "IsLocked": true,
       "State": 0,
-      "BlockedByTrayIds": [1,2],
-      "Position": { "x": 7, "y": -2, "z": -10.7 },
+      "BlockedByTrayIds": [4,5],
+      "Position": { "x": -3.5, "y": -2, "z": -10.7 },
       "Rotation": { "x": 0, "y": 0, "z": 0 },
       "Composition": [
-        { "Color": 4, "Count": 6 },
-        { "Color": 3, "Count": 2 }
+        { "Color": 2, "Count": 4 },
+        { "Color": 3, "Count": 4 }
+      ]
+    },
+    {
+      "Id": 7,
+      "CardColor": 3,
+      "IsLocked": true,
+      "State": 0,
+      "BlockedByTrayIds": [4,5],
+      "Position": { "x": -7, "y": -2, "z": -10.7 },
+      "Rotation": { "x": 0, "y": 0, "z": 0 },
+      "Composition": [
+        { "Color": 2, "Count": 4 },
+        { "Color": 3, "Count": 4 }
       ]
     }
   ],

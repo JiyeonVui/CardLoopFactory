@@ -21,6 +21,8 @@ public class GameContext : MonoBehaviour
     // Quản lý 3 màn UI (Start / Transition / Result). Kéo vào inspector — đây là nơi
     // GameContext gán và Provide UIManager làm service IUIManager.
     [SerializeField] private UIManager _uiManager;
+    // Hiệu ứng mũi tên chạy dọc belt. Nhận data quỹ đạo cùng nguồn với BeltController.
+    // [SerializeField] private BeltArrowAnimator _beltArrowAnimator;
 
     // Camera quay tại chỗ (idle) quanh local Z khi chưa vào game: 360°/CameraSpinDuration
     // giây (= 10°/s), loop vô hạn. Khi bấm Start ngừng quay và (sau khi che) đặt về góc chơi.
@@ -30,17 +32,25 @@ public class GameContext : MonoBehaviour
     private GameContextData _contextData;
     private GameController _gameController;
     private Tween _cameraSpinTween;
-
-
+    [Inject] private IManagerAudio _audioManager;
+    
     protected async void Start() {
         try
         {
+            // Android mặc định cap ~30 FPS khi vSync tắt + targetFrameRate = -1 → giật.
+            // Ép 60 FPS cho mượt (đặt 120 nếu muốn theo màn hình cao tần số).
+            Application.targetFrameRate = 60;
+
             await ServiceInitializer.InitializeAsync();
 
             // Đảm bảo về main thread trước khi gọi API Unity (FindFirstObjectByType,
             // spawn, v.v.) — phòng trường hợp một service init rời main thread.
             await UniTask.SwitchToMainThread();
-
+            ServiceLocator.Instance.ResolveInjection(this);
+            _audioManager.PlayBackgroundMusic();
+            // Nhạc nền chạy loop suốt phiên (Start menu → gameplay → result).
+            
+    
             // Đăng ký UIManager làm service để nơi khác resolve nếu cần.
             if (_uiManager != null)
             {
@@ -48,6 +58,8 @@ public class GameContext : MonoBehaviour
             }
 
             _gameController = FindFirstObjectByType<GameController>();
+            // Khởi tạo GameController sau khi services đã đăng ký (ResolveInjection cần chúng).
+            _gameController.Init();
 
             var poolingService = ServiceLocator.Instance.Resolve<IPoolingService>();
             var factory = new GameEntityFactory(poolingService);
@@ -107,8 +119,16 @@ public class GameContext : MonoBehaviour
 
         _uiManager.OnStartClicked += () => HandleStartClicked().Forget();
         _uiManager.OnRetryClicked += () => HandleRetryClicked().Forget();
-        _gameController.OnWin += () => _uiManager.ShowResult(true);
-        _gameController.OnLose += () => _uiManager.ShowResult(false);
+        _gameController.OnWin += () =>
+        {
+
+            _uiManager.ShowResult(true);
+        };
+        _gameController.OnLose += () =>
+        {
+
+            _uiManager.ShowResult(false);
+        };
     }
 
     // Bấm Start: ẩn màn Start → cloud chụm che → load level dưới màn che → cloud tản ra
@@ -249,6 +269,8 @@ public class GameContext : MonoBehaviour
 
         // Đặt marker startBelt/endBelt vào đúng điểm đầu/cuối path sau khi path đã dựng.
         _contextData.gameController.PlaceBeltMarkers(beltController);
+
+        // Cho mũi tên chạy dọc cùng quỹ đạo belt (dựng từ chính waypoint của level).
 
         foreach (TrayModel trayModel in level.TrayModels)
         {
