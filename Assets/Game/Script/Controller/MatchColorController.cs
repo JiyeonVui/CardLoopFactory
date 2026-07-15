@@ -60,10 +60,6 @@ public class MatchColorSlot
 public class MatchColorController : IMatchColorController
 {
     
-    // Ngưỡng lệch trục X để coi 1 card là "trùng vị trí" với slot: chỉ so hiệu toạ
-    // độ x, |card.x - slot.x| < ngưỡng thì match (bỏ qua y/z).
-    private const float MatchTolerance = 0.1f;
-
     // Fallback số card cần để hoàn thành 1 slot khi tray không có Composition hợp lệ.
     // Bình thường lấy đúng theo tổng card gốc của tray (GetRequiredCardCount).
     private const int DefaultSlotCapacity = 6;
@@ -166,7 +162,16 @@ public class MatchColorController : IMatchColorController
                 continue;
             }
 
-            if (Mathf.Abs(conveyorCard.position.x - slot.SlotPosition.x) >= MatchTolerance)
+            // Crossing thay vì "đang trong cửa sổ": card khớp đúng frame mà toạ độ X
+            // của nó QUÉT QUA slot.x theo chiều tiến (+X) — tức slot.x nằm trong nửa
+            // khoảng (previousX, currentX]. Cách này độc lập FPS: dù frame giật, bước
+            // nhảy lớn cỡ nào thì khoảng quét vẫn chứa slot.x nên không bao giờ trượt
+            // (khác kiểu so |card.x - slot.x| < tolerance cũ, dễ nhảy qua cửa sổ hẹp).
+            // Trên belt chữ U, X không giảm dọc đường đi nên chỉ khớp một chiều; lúc
+            // wrap (card teleport cuối→đầu) X nhảy lùi nên tự động không thoả điều kiện.
+            float previousX = conveyorCard.previousPosition.x;
+            float currentX = conveyorCard.position.x;
+            if (!(previousX < slot.SlotPosition.x && slot.SlotPosition.x <= currentX))
             {
                 continue;
             }

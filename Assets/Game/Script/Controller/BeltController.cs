@@ -165,6 +165,7 @@ public class BeltController : IBeltController
         {
             card = cardModel,
             position = StartPosition,
+            previousPosition = StartPosition,
             direction = StartDirection,
             distance = 0f
         };
@@ -180,6 +181,7 @@ public class BeltController : IBeltController
         {
             card = cardModel,
             position = StartPosition,
+            previousPosition = StartPosition,
             direction = StartDirection,
             distance = 0f
         };
@@ -254,6 +256,10 @@ public class BeltController : IBeltController
                 continue;
             }
 
+            // Lưu vị trí trước khi tiến, để CheckMatchColor phát hiện card quét qua
+            // slot trong khoảng (previousPosition.x, position.x] của frame này.
+            card.previousPosition = card.position;
+
             // Tiến theo arc-length dọc path; belt là vòng lặp nên wrap về đầu khi vượt
             // tổng độ dài (card "nhảy" từ cuối ∪ về đầu, giống hành vi teleport cũ).
             card.distance += step;
@@ -282,6 +288,7 @@ public class BeltController : IBeltController
         ConveyorCard nextCard = cardInQueue.Dequeue();
         nextCard.distance = 0f;
         nextCard.position = StartPosition;
+        nextCard.previousPosition = StartPosition;
         nextCard.direction = StartDirection;
         cardOnBelt.Add(nextCard);
 
