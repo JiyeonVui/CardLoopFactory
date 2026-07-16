@@ -107,13 +107,13 @@ Pack **Casual Game Sounds U6** đã có sẵn ~50 file (`DM-CGS-01..50.wav`) →
 
 ## 7. Tổng kết nguồn asset (sourcing) & license
 
-| Pack | Dùng cho | Trạng thái license cần xác nhận |
-|------|----------|----------------------------------|
-| Kenney Factory Kit / Car Kit | Models 3D nhà máy, belt, box, truck, arrow | Kenney = **CC0** ✅ (an toàn thương mại) |
-| 300Mind 2D Game UI Kit | Sprite UI + fonts (Oswald, GROBOLD, Ariston) | ⚠️ Kiểm tra license kit + license nhúng của từng font |
-| Casual Game Sounds U6 | Toàn bộ SFX | ⚠️ Xác nhận điều khoản dùng thương mại |
-| BGM (pixel-drift…) | Nhạc nền | ⚠️ Xác nhận nguồn & quyền dùng trước khi ship |
-| msVFX Free Smoke | VFX khói | ⚠️ Kiểm tra điều khoản "Free" |
-| TextMesh Pro / LiberationSans | Font fallback | ✅ (Unity/OFL) |
+| Pack | Dùng cho | Link | Trạng thái license cần xác nhận |
+|------|----------|------|----------------------------------|
+| Kenney Factory Kit / Car Kit | Models 3D nhà máy, belt, box, truck, arrow | [Factory Kit](https://kenney.nl/assets/factory-kit) · [Car Kit](https://kenney.nl/assets/car-kit) | Kenney = **CC0** ✅ (an toàn thương mại) |
+| 300Mind 2D Game UI Kit | Sprite UI + fonts (Oswald, GROBOLD, Ariston) | [2D Mobile Game UI Kit (Unity Asset Store)](https://assetstore.unity.com/packages/2d/gui/2d-mobile-game-ui-kit-355774) | ⚠️ Kiểm tra license kit + license nhúng của từng font |
+| Casual Game Sounds U6 | Toàn bộ SFX | [FREE Casual Game SFX Pack — Dustyroom (file `DM-CGS-*`)](https://assetstore.unity.com/packages/audio/sound-fx/free-casual-game-sfx-pack-54116) | ⚠️ Xác nhận điều khoản dùng thương mại |
+| BGM (pixel-drift…) | Nhạc nền | [Pixel Drift — Pecan Pie (Uppbeat)](https://uppbeat.io/track/pecan-pie/pixel-drift) | ⚠️ Xác nhận nguồn & quyền dùng trước khi ship |
+| msVFX Free Smoke | VFX khói | [Free Stylized Smoke Effects Pack (Unity Asset Store)](https://assetstore.unity.com/packages/vfx/particles/fire-explosions/free-stylized-smoke-effects-pack-226406) ⚠️ cần đối chiếu đúng pack | ⚠️ Kiểm tra điều khoản "Free" |
+| TextMesh Pro / LiberationSans | Font fallback | [TextMeshPro (Unity package)](https://docs.unity3d.com/Packages/com.unity.textmeshpro@latest) | ✅ (Unity/OFL) |
 
 **Việc cần làm trước khi ship**: rà license từng pack ⚠️, thay thế bất kỳ asset nào không có quyền thương mại bằng asset CC0/đã mua license.
