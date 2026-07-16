@@ -106,3 +106,24 @@ Ngân sách polish có hạn nên tập trung vào những điểm người chơ
 - **Rủi ro cân bằng độ khó**: điều kiện Lose (belt kẹt trọn 1 vòng + hết nước tạo slot) phụ thuộc mạnh vào data level → cần nhiều vòng playtest ở M6.
 - **Giả định thiết bị**: nhắm mobile tầm trung; poly-count thấp + pooling để giữ 60 FPS.
 - **Phụ thuộc license asset**: mọi asset pack dùng đều phải hợp lệ thương mại trước khi ship (xem [ART_ASSETS.md](./ART_ASSETS.md)).
+
+## 8. Kế hoạch thực hiện theo giai đoạn (7 ngày)
+
+Bản kế hoạch chia theo ngày, kèm thời lượng làm việc và mục tiêu đầu ra từng ngày.
+
+| Ngày | Thời lượng | Công việc chính | Đầu ra mong đợi |
+|------|-----------|-----------------|-----------------|
+| **Ngày 1** | 3h | Chơi thử game mẫu và **break down các tính năng** | Danh sách cơ chế cốt lõi (di chuyển belt, distribute, match, release) |
+| **Ngày 2** | 3h | Dựng **kiến trúc MVC cơ bản** — dựa trên breakdown, xác định các class **Model / View / Controller** sẽ dùng. Mô tả kiến trúc code cho AI, đề xuất AI **vẽ diagram** và **review** | Sơ đồ kiến trúc + danh sách class Model/View/Controller |
+| **Ngày 3–4** | 10h/ngày | **Code kiến trúc và gameplay** | Core loop chạy được (tray → belt → match → win/lose) |
+| **Ngày 5** | 3h | **Tìm asset và sound**, xác định concept prototype và **điều chỉnh lại thông số** cho phù hợp với asset | Asset/sound đã chọn, thông số game khớp asset |
+| **Ngày 6** | 3h | **Thiết kế level**, **build test trên Android**, **viết báo cáo** | Level hoàn chỉnh, bản build Android, báo cáo |
+| **Ngày 7** | — | Dự phòng / hoàn thiện & bàn giao | — |
+
+### Chi tiết từng ngày
+
+- **Ngày 1 — Phân tích (3h):** Chơi trực tiếp game mẫu, quan sát và tách gameplay thành các tính năng độc lập để làm nền cho thiết kế kiến trúc.
+- **Ngày 2 — Kiến trúc MVC (3h):** Từ breakdown, định hình bộ class Model, View, Controller cần thiết. Mô tả rõ kiến trúc cho AI, nhờ AI vẽ diagram trực quan hoá luồng và review lại thiết kế trước khi code.
+- **Ngày 3–4 — Hiện thực (10h/ngày):** Dồn thời gian code khung kiến trúc và toàn bộ gameplay theo đúng phân tách MVC đã chốt.
+- **Ngày 5 — Asset & tinh chỉnh (3h):** Tìm và chọn art/sound phù hợp, cố định concept prototype, chỉnh lại các thông số (kích thước, tốc độ, số lượng) cho khớp asset thực tế.
+- **Ngày 6 — Level, build & báo cáo (3h):** Thiết kế level chơi được, build và test trên thiết bị Android, viết báo cáo tổng kết quá trình.
